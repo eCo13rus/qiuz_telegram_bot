@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use App\Models\Question;
 use App\Providers\ChatGPTService;
+use App\Telegram\Commands\QuizCommand;
 
 class TelegramBotController extends Controller
 {
@@ -19,7 +20,7 @@ class TelegramBotController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        $update = TelegramFacade::commandsHandler(true);// получаем объект от обновлений телеги, сразу обработанный
+        $update = TelegramFacade::commandsHandler(true); // получаем объект от обновлений, сразу обработанный
 
         if ($update->isType('callback_query')) {
             $this->handleCallbackQuery($update);
@@ -84,13 +85,8 @@ class TelegramBotController extends Controller
             $nextQuestionId = Question::where('id', '>', $question_id)->min('id');
             if ($nextQuestionId) {
                 $nextQuestion = Question::with('answers')->find($nextQuestionId);
-                $keyboard = [];
-                foreach ($nextQuestion->answers as $answer) {
-                    $keyboard[] = [
-                        ['text' => $answer->text, 'callback_data' => "question_{$nextQuestion->id}_answer_{$answer->id}"]
-                    ];
-                }
-                $text = 'Красачик! Следующий вопрос:' . PHP_EOL . $nextQuestion->text;
+                $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion); // Изменение здесь
+                $text = 'Красавчик! Следующий вопрос:' . PHP_EOL . $nextQuestion->text;
                 $reply_markup = json_encode(['inline_keyboard' => $keyboard]);
             } else {
                 $text = 'Достойно! Прошел quiz.' . PHP_EOL . 'Теперь спроси что-нибудь у ChatGPT:';
