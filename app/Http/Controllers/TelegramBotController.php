@@ -56,26 +56,25 @@ class TelegramBotController extends Controller
     protected function handleMessage($update)
     {
         $message = $update->getMessage();
-        Log::info(['response' => $message]);
-
         $chat_id = $message->getChat()->getId();
-        Log::info(['response' => $chat_id]);
-
         $messageText = $message->getText();
+
         Log::info(['response' => $messageText]);
 
-
-        switch ($messageText) {
-            case '/start':
-                $this->startCommand($chat_id);
-                break;
-            case '/quiz':
-                $this->quizCommand($chat_id);
-                break;
-            default:
-                $this->processDefaultMessage($chat_id, $messageText);
-                break;
+        // Проверка, не является ли сообщение командой
+        if (!$this->isCommand($messageText)) {
+            $this->requestChatGPT($chat_id, $messageText);
         }
+    }
+
+    protected function isCommand(string $messageText): bool
+    {
+        $commands = [
+                    '/start', 
+                    '/quiz',
+                    ];
+
+        return in_array($messageText, $commands);
     }
 
     protected function processQuizCallbackQuery($parts, $chat_id)
@@ -119,49 +118,19 @@ class TelegramBotController extends Controller
         }
     }
 
-    protected function startCommand($chat_id)
+    protected function requestChatGPT($chat_id, $messageText)
     {
-        $text = 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz';
-        TelegramFacade::sendMessage(['chat_id' => $chat_id, 'text' => $text]);
-    }
-
-    protected function quizCommand($chat_id)
-    {
-        $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
-            return Question::first()->id;
-        });
-
-        $question = Question::with('answers')->find($currentQuestionId);
-
-        $keyboard = [];
-        foreach ($question->answers as $answer) {
-            $keyboard[] = [['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]];
-        }
-
-        TelegramFacade::sendMessage([
-            'chat_id' => $chat_id,
-            'text' => $question->text,
-            'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-        ]);
-    }
-
-    protected function processDefaultMessage($chat_id, $messageText)
-    {
-        Log::info('Before asking ChatGPT');
-
         try {
             $response = $this->askChatGPT($messageText, $chat_id);
 
             $promoText = "Вот ваш промокод: QWERTY123" . PHP_EOL .
                 'Вот ваша ссылка на сайт: https://example.com';
 
-            $responseText = $response['choices'][0]['message']['content'] . PHP_EOL . $promoText ?? 'Извините, не удалось получить ответ от ChatGPT.';
+            $responseText = $response['choices'][0]['message']['content'] . "\n" . PHP_EOL . $promoText ?? 'Извините, не удалось получить ответ от ChatGPT.';
         } catch (\Exception $e) {
             Log::error('Error asking ChatGPT', ['exception' => $e->getMessage()]);
             $responseText = 'Извините, произошла ошибка при запросе к ChatGPT.';
         }
-
-        Log::info(['Ответ от ChatGPT' => $responseText]);
 
         TelegramFacade::sendMessage([
             'chat_id' => $chat_id,

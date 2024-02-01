@@ -13,10 +13,8 @@ class StartCommand extends Command
     protected string $description = 'Стартовая команда, выводит инструкции';
 
     public function handle()
-    {
-        // Log::info(['response' => $this->name]);
-        
-        // $this->replyWithChatAction(['action' => Actions::TYPING]);
-        // $this->replyWithMessage(['text' => 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz']);
+    {        
+        $this->replyWithChatAction(['action' => Actions::TYPING]);
+        $this->replyWithMessage(['text' => 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz']);
     }
 }

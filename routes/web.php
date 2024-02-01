@@ -2,9 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TelegramBotController;
-use App\Http\Controllers\ChatGPTController;
-use App\Services;
-
 
 /*
 |--------------------------------------------------------------------------
@@ -29,4 +26,4 @@ Route::get('/telegram-webhook', [TelegramBotController::class, 'handleWebhook'])
 
 Route::post('/telegram-webhook', [TelegramBotController::class, 'handleWebhook']);
 
-Route::post('/chatgpt/callback/{chat_id}', [ChatGPTController::class, 'handleRequest'])->name('chatgpt.request');
+Route::post('/chatgpt/callback/{chat_id}', [TelegramBotController::class, 'requestChatGPT'])->name('chatgpt.request');

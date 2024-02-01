@@ -16,31 +16,25 @@ class QuizCommand extends Command
 
     public function handle()
     {
-        // Log::info(['response' => $this->name]);
+        $this->replyWithChatAction(['action' => Actions::TYPING]);
 
-        // $this->replyWithChatAction(['action' => Actions::TYPING]);
+        $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();
 
-        // $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();
+        $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
+            return Question::first()->id;
+        });
 
-        // $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
-        //     return Question::first()->id;
-        // });
+        $question = Question::with('answers')->find($currentQuestionId);
 
-        // $question = Question::with('answers')->find($currentQuestionId);
-        // if (!$question) {
-        //     $this->replyWithMessage(['text' => 'К сожалению, вопросы закончились.']);
-        //     return;
-        // }
+        $keyboard = [];
+        foreach ($question->answers as $answer) {
+            $keyboard[] = [['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]];
+        }
 
-        // $keyboard = [];
-        // foreach ($question->answers as $answer) {
-        //     $keyboard[] = [['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]];
-        // }
-
-        // $this->replyWithMessage([
-        //     'text'         => $question->text,
-        //     'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-        // ]);
+        $this->replyWithMessage([
+            'text'         => $question->text,
+            'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
+        ]);
 
     }
 }
