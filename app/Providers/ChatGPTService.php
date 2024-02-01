@@ -19,6 +19,8 @@ class ChatGPTService
 
     public function ask($question, $chatId)
     {
+        Log::info("Выполняется запрос к gen-api.ru", ['question' => $question, 'chatId' => $chatId]);
+
         try {
             $messages = json_encode([
                 [
@@ -35,11 +37,15 @@ class ChatGPTService
                         'Accept' => 'application/json',
                     ],
                     'json' => [
-                        'messages' => $messages, 
+                        'messages' => $messages,
                         'is_sync' => true,
                     ],
                 ]
             );
+
+            $bodyRaw = (string) $response->getBody();
+            Log::info("Сырой ответ от gen-api.ru", ['responseBody' => $bodyRaw]);
+            $body = json_decode($bodyRaw, true);
 
             $body = json_decode((string) $response->getBody(), true);
 

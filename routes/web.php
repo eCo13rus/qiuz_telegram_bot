@@ -21,9 +21,9 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/send-message', [TelegramBotController::class, 'sendMessage']);
+// Route::get('/send-message', [TelegramBotController::class, 'sendMessage']);
 
-Route::post('/send-message', [TelegramBotController::class, 'sendMessage']);
+// Route::post('/send-message', [TelegramBotController::class, 'sendMessage']);
 
 Route::get('/telegram-webhook', [TelegramBotController::class, 'handleWebhook']);
 

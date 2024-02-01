@@ -16,17 +16,20 @@ class ChatGPTController extends Controller
     public function __construct(ChatGPTService $chatGPTService)
     {
         $this->chatGPTService = $chatGPTService;
+        Log::info(['response' => $this->chatGPTService]);
     }
 
     public function handleRequest(Request $request, $chatId)
     {
         $messageText = $request->input('message'); // Получаем текст сообщения от пользователя
+        Log::info(['resoponse' => $messageText]);
 
         $response = $this->chatGPTService->ask($messageText, $chatId);
         Log::info('Ответ от ChatGPTService', ['response' => $response]);
 
         if (isset($response['choices'][0]['message']['content'])) {
-            $responseText = 'Ответ от ChatGPT: ' . $response['choices'][0]['message']['content'];
+            $responseText = $response['choices'][0]['message']['content'];
+            Log::info(['resoponse' => $responseText]);
         } else {
             $responseText = 'Извините, не удалось получить ответ от ChatGPT.';
         }
@@ -36,7 +39,5 @@ class ChatGPTController extends Controller
             'text' => $responseText,
         ]);
 
-
-        Cache::pull('chat_' . $chatId . '_state');
     }
 }

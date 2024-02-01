@@ -6,39 +6,41 @@ use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
 use App\Models\Question;
 use Illuminate\Support\Facades\Cache;
-
+use Illuminate\Support\Facades\Log;
 
 class QuizCommand extends Command
 {
     protected string $name = 'quiz';
+
     protected string $description = 'Начать квиз';
 
     public function handle()
     {
-        $this->replyWithChatAction(['action' => Actions::TYPING]);
+        // Log::info(['response' => $this->name]);
 
-        $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();
+        // $this->replyWithChatAction(['action' => Actions::TYPING]);
 
-        $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
-            return Question::first()->id;
-        });
+        // $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();
 
-        $question = Question::with('answers')->find($currentQuestionId);
-        if (!$question) {
-            $this->replyWithMessage(['text' => 'К сожалению, вопросы закончились.']);
-            return;
-        }
+        // $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
+        //     return Question::first()->id;
+        // });
 
-        $keyboard = [];
-        foreach ($question->answers as $answer) {
-            $keyboard[] = [['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]];
-        }
+        // $question = Question::with('answers')->find($currentQuestionId);
+        // if (!$question) {
+        //     $this->replyWithMessage(['text' => 'К сожалению, вопросы закончились.']);
+        //     return;
+        // }
 
-        $this->replyWithMessage([
-            'text'         => $question->text,
-            'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-        ]);
+        // $keyboard = [];
+        // foreach ($question->answers as $answer) {
+        //     $keyboard[] = [['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]];
+        // }
 
-        Cache::put('chat_' . $chat_id . '_current_question_id', $question->id, 60 * 60);
+        // $this->replyWithMessage([
+        //     'text'         => $question->text,
+        //     'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
+        // ]);
+
     }
 }

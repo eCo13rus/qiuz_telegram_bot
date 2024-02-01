@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Commands;
 
+use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
 
@@ -13,7 +14,9 @@ class StartCommand extends Command
 
     public function handle()
     {
-        $this->replyWithChatAction(['action' => Actions::TYPING]);
-        $this->replyWithMessage(['text' => 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz']);
+        // Log::info(['response' => $this->name]);
+        
+        // $this->replyWithChatAction(['action' => Actions::TYPING]);
+        // $this->replyWithMessage(['text' => 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz']);
     }
 }
