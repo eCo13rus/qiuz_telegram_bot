@@ -123,8 +123,8 @@ class TelegramBotController extends Controller
         try {
             $response = $this->askChatGPT($messageText, $chat_id);
 
-            $promoText = "Вот ваш промокод: QWERTY123" . PHP_EOL .
-                'Вот ваша ссылка на сайт: https://example.com';
+            $promoText = "Твой промокод: QWERTY123" . PHP_EOL .
+                'Твоя ссылка на сайт: https://example.com 😁';
 
             $responseText = $response['choices'][0]['message']['content'] . "\n" . PHP_EOL . $promoText ?? 'Извините, не удалось получить ответ от ChatGPT.';
         } catch (\Exception $e) {
