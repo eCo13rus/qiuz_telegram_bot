@@ -5,14 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
-use Illuminate\Support\Facades\Cache;
-use Telegram\Bot\Laravel\Facades\Telegram;
 use App\Models\Question;
 use App\Providers\ChatGPTService;
 
 class TelegramBotController extends Controller
 {
-    //private const CHAT_ID = 5241343729;
     protected $chatGPTService;
 
     public function __construct(ChatGPTService $chatGPTService)
@@ -20,14 +17,9 @@ class TelegramBotController extends Controller
         $this->chatGPTService = $chatGPTService;
     }
 
-    private function askChatGPT($text, $chatId)
-    {
-        return $this->chatGPTService->ask($text, $chatId);
-    }
-
     public function handleWebhook(Request $request)
     {
-        $update = TelegramFacade::commandsHandler(true);
+        $update = TelegramFacade::commandsHandler(true);// получаем объект от обновлений телеги, сразу обработанный
 
         if ($update->isType('callback_query')) {
             $this->handleCallbackQuery($update);
@@ -70,9 +62,9 @@ class TelegramBotController extends Controller
     protected function isCommand(string $messageText): bool
     {
         $commands = [
-                    '/start', 
-                    '/quiz',
-                    ];
+            '/start',
+            '/quiz',
+        ];
 
         return in_array($messageText, $commands);
     }
@@ -120,17 +112,7 @@ class TelegramBotController extends Controller
 
     protected function requestChatGPT($chat_id, $messageText)
     {
-        try {
-            $response = $this->askChatGPT($messageText, $chat_id);
-
-            $promoText = "Твой промокод: QWERTY123" . PHP_EOL .
-                'Твоя ссылка на сайт: https://example.com 😁';
-
-            $responseText = $response['choices'][0]['message']['content'] . "\n" . PHP_EOL . $promoText ?? 'Извините, не удалось получить ответ от ChatGPT.';
-        } catch (\Exception $e) {
-            Log::error('Error asking ChatGPT', ['exception' => $e->getMessage()]);
-            $responseText = 'Извините, произошла ошибка при запросе к ChatGPT.';
-        }
+        $responseText = $this->chatGPTService->handleRequest($messageText, $chat_id); // Используйте новый метод handleRequest
 
         TelegramFacade::sendMessage([
             'chat_id' => $chat_id,

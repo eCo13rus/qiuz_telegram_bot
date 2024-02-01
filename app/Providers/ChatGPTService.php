@@ -66,4 +66,23 @@ class ChatGPTService
             ], 422);
         }
     }
+
+    public function handleRequest($question, $chatId)
+    {
+        $response = $this->ask($question, $chatId); // Используйте существующий метод ask для отправки вопроса
+
+        try {
+            $promoText = "Твой промокод: QWERTY123" . PHP_EOL .
+                'Твоя ссылка на сайт: https://example.com 😁';
+
+            $responseText = isset($response['choices'][0]['message']['content'])
+                ? $response['choices'][0]['message']['content'] . "\n" . PHP_EOL . $promoText
+                : 'Извините, не удалось получить ответ от ChatGPT.';
+
+            return $responseText;
+        } catch (\Exception $e) {
+            Log::error('Error handling ChatGPT request', ['exception' => $e->getMessage()]);
+            return 'Извините, произошла ошибка при обработке вашего запроса.';
+        }
+    }
 }
