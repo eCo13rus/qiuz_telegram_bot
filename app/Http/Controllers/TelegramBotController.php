@@ -63,7 +63,7 @@ class TelegramBotController extends Controller
         $chat_id = $message->getChat()->getId();
 
         $messageText = $message->getText();
-        $logMessage = json_encode($messageText);
+        //$logMessage = json_encode($messageText);
         //Log::info('response', ['messageText' => $logMessage]);
 
         // Проверка, не является ли сообщение командой

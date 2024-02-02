@@ -17,7 +17,7 @@ class ChatGPTService
         $this->apiKey = config('services.chatgpt.api_key'); // Получаем API ключ из конфигурации
     }
 
-    public function queryChatGPTApi($question, $chatId)
+    public function queryChatGPTApi(string $question, int $chatId): array
     {
         Log::info("Выполняется запрос к gen-api.ru", ['question' => $question, 'chatId' => $chatId]);
 
@@ -60,14 +60,14 @@ class ChatGPTService
                 'response' => $e->hasResponse() ? (string) $e->getResponse()->getBody() : 'пусто ответ',
             ]);
 
-            return response()->json([
+            return ([
                 'error' => 'Ошибка при запросе к ChatGPT.',
                 'details' => $e->getMessage()
-            ], 422);
+            ]);
         }
     }
 
-    public function handleRequest($question, $chatId)
+    public function handleRequest(string $question, int $chatId): string
     {
         $response = $this->queryChatGPTApi($question, $chatId); // Используйте существующий метод ask для отправки вопроса
 
