@@ -73,7 +73,6 @@ class TelegramBotController extends Controller
         return false;
     }
 
-
     //В конце квиза юзер вводит сообщение ChatGPT,отправляеем запрос и возвращаем ответ пользователю.
     protected function requestChatGPT(int $chat_id, string $messageText): void
     {
