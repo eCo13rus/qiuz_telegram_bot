@@ -14,6 +14,11 @@ class QuizCommand extends Command
 
     protected string $description = 'Начать квиз';
 
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
     public function handle()
     {
         $this->replyWithChatAction(['action' => Actions::TYPING]);
