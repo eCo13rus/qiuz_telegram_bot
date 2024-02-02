@@ -17,7 +17,7 @@ class ChatGPTService
         $this->apiKey = config('services.chatgpt.api_key'); // Получаем API ключ из конфигурации
     }
 
-    public function ask($question, $chatId)
+    public function queryChatGPTApi($question, $chatId)
     {
         Log::info("Выполняется запрос к gen-api.ru", ['question' => $question, 'chatId' => $chatId]);
 
@@ -69,7 +69,7 @@ class ChatGPTService
 
     public function handleRequest($question, $chatId)
     {
-        $response = $this->ask($question, $chatId); // Используйте существующий метод ask для отправки вопроса
+        $response = $this->queryChatGPTApi($question, $chatId); // Используйте существующий метод ask для отправки вопроса
 
         try {
             $promoText = "Твой промокод: QWERTY123" . PHP_EOL .

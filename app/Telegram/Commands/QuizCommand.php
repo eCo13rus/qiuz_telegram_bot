@@ -35,11 +35,33 @@ class QuizCommand extends Command
     public static function createQuestionKeyboard($question): array
     {
         $keyboard = [];
-        foreach ($question->answers as $answer) {
-            $keyboard[] = [
-                ['text' => $answer->text, 'callback_data' => "question_{$question->id}_answer_{$answer->id}"]
-            ];
-        }
+
+        $answers = $question->answers->toArray();
+
+        // Первая строка кнопок
+        $keyboard[] = [
+            [
+                'text' => $answers[0]['text'],
+                'callback_data' => "question_{$question->id}_answer_{$answers[0]['id']}" // Callback данные первой кнопки
+            ],
+            [
+                'text' => $answers[1]['text'],
+                'callback_data' => "question_{$question->id}_answer_{$answers[1]['id']}" // Callback данные второй кнопки
+            ]
+        ];
+
+        // Вторая строка кнопок
+        $keyboard[] = [
+            [
+                'text' => $answers[2]['text'],
+                'callback_data' => "question_{$question->id}_answer_{$answers[2]['id']}" // Callback данные третьей кнопки
+            ],
+            [
+                'text' => $answers[3]['text'],
+                'callback_data' => "question_{$question->id}_answer_{$answers[3]['id']}" // Callback данные четвертой кнопки
+            ]
+        ];
+
         return $keyboard;
     }
 }

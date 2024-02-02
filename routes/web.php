@@ -18,8 +18,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/telegram-webhook', [TelegramBotController::class, 'handleWebhook']);
+Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
 
-Route::post('/telegram-webhook', [TelegramBotController::class, 'handleWebhook']);
+Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
 
 Route::post('/chatgpt/callback/{chat_id}', [TelegramBotController::class, 'requestChatGPT'])->name('chatgpt.request');
