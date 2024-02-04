@@ -5,7 +5,7 @@ namespace App\Telegram\Commands;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
-use Telegram\Bot\Exceptions\TelegramResponseException; // Импортируем исключение
+use Telegram\Bot\Exceptions\TelegramResponseException;
 
 class StartCommand extends Command
 {
