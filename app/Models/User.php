@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'telegram_id',
     ];
 
     /**
@@ -46,5 +47,15 @@ class User extends Authenticatable
     public function answers()
     {
         return $this->belongsToMany(Answer::class, 'user_quiz_responses');
+    }
+
+    public function state()
+    {
+        return $this->hasOne(UserState::class);
+    }
+
+    public function userStates()
+    {
+        return $this->hasMany(UserState::class);
     }
 }
