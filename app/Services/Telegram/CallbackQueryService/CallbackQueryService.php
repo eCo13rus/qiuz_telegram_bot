@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 
-
 class CallbackQueryService
 {
     // Получаем информацию с кнопок(ответов пользователя)
@@ -21,93 +20,105 @@ class CallbackQueryService
         $message = $callbackQuery->getMessage();
         $chatId = $message->getChat()->getId();
 
-        $parts = explode('_', $callbackData);
-        if (count($parts) === 4 && $parts[0] === 'question') {
-            // Передаем объект $callbackQuery как третий параметр
-            $this->processCallbackData($parts, $chatId, $callbackQuery);
+        try {
+            $parts = explode('_', $callbackData);
+            if (count($parts) === 4 && $parts[0] === 'question') {
+                // Передаем объект $callbackQuery как третий параметр
+                $this->processCallbackData($parts, $chatId, $callbackQuery);
+            }
+
+            TelegramFacade::answerCallbackQuery(['callback_query_id' => $callbackQuery->getId()]);
+        } catch (\Telegram\Bot\Exceptions\TelegramResponseException $e) {
+            if (strpos($e->getMessage(), 'bot was blocked by the user') !== false) {
+                Log::warning('Пользователь заблокировал бота при взаимодействии с inline-клавиатурой', ['chatId' => $chatId]);
+
+                // Обновление статуса пользователя в базе данных как "неактивный"
+                $user = User::where('telegram_id', $chatId)->first();
+                if ($user) {
+                    $user->update(['status' => 'неактивный']); // Предполагается, что у модели User есть атрибут status
+                    Log::info('Статус пользователя обновлен на неактивный', ['userId' => $chatId]);
+                }
+            } else {
+                throw $e; // Переброс других исключений для обработки в другом месте
+            }
         }
-
-        TelegramFacade::answerCallbackQuery(['callback_query_id' => $callbackQuery->getId()]);
     }
-
-    //Метод определяет состояние пользователя и был ли выбран правильный ответ
+    // Обрабатывает данные обратного вызова от Telegram, связанные с викториной.
     protected function processCallbackData(array $parts, int $chatId, CallbackQuery $callbackQuery): void
     {
+        // Извлечение данных пользователя и вопроса из обратного вызова
         $telegramUserId = $callbackQuery->getFrom()->getId();
         $currentQuestionId = (int) $parts[1];
         $currentAnswerId = (int) $parts[3];
 
-        Log::info('Processing callback data', [
-            'telegramUserId' => $telegramUserId,
-            'currentQuestionId' => $currentQuestionId,
-            'currentAnswerId' => $currentAnswerId,
-        ]);
-
-        // Использование firstOrCreate для предотвращения повторного создания пользователя
-        Log::debug('Trying to find or create user with telegram_id', ['telegram_id' => $telegramUserId]);
+        // Поиск или создание записи пользователя в БД
         $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
 
-        Log::info($user->wasRecentlyCreated ? 'New user action - registered' : 'User action - existing', ['telegramUserId' => $telegramUserId, 'user' => $user]);
-
-
-        Log::info('User action', ['telegramUserId' => $telegramUserId, 'user' => $user]);
-
-        // Проверка ответа пользователя
+        // Проверка правильности ответа
         $isCorrect = Question::find($currentQuestionId)
             ->answers()
             ->where('id', $currentAnswerId)
             ->where('is_correct', true)
             ->exists();
 
-        Log::info('Answer checked', ['userId' => $user->id, 'isCorrect' => $isCorrect]);
-
         try {
             if ($isCorrect) {
-                // Определение следующего вопроса или завершения викторины
-                $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
-                $text = 'Красавчик!';
-                $replyMarkup = null;
-
-                if (!is_null($nextQuestionId)) {
-                    $nextQuestion = Question::with('answers')->find($nextQuestionId);
-                    $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
-                    $text .= ' Следующий вопрос:' . PHP_EOL . $nextQuestion->text;
-                    $replyMarkup = json_encode(['inline_keyboard' => $keyboard]);
-
-                    $state = 'quiz_in_progress';
-                    $questionId = $nextQuestionId;
-                } else {
-                    $text .= ' Прошел quiz.' . PHP_EOL . 'Теперь спроси что-нибудь у ChatGPT:';
-                    $state = 'quiz_completed';
-                    $questionId = null; // Очищаем ID текущего вопроса
-                }
-
-                // Обновляем состояние пользователя
-                UserState::updateOrCreate(
-                    ['user_id' => $user->id],
-                    ['state' => $state, 'current_question_id' => $questionId]
-                );
-
-                // Отправка сообщения пользователю
-                TelegramFacade::sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => $text,
-                    'reply_markup' => $replyMarkup
-                ]);
+                $this->handleCorrectAnswer($user, $currentQuestionId, $chatId);
             } else {
-                $text = 'Ну ты гонишь? Попробуй еще раз. Нажми /quiz';
-                Log::warning('User gave a wrong answer', ['userId' => $user->id]);
-                TelegramFacade::sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => $text,
-                ]);
+                $this->handleIncorrectAnswer($chatId);
             }
         } catch (QueryException $exception) {
-            Log::error("Database error updating user state", ['exception' => $exception->getMessage(), 'userId' => $user->id]);
+            // Обработка исключения при возникновении ошибки запроса к БД
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'Извините, произошла ошибка. Пожалуйста, попробуйте ещё раз.'
             ]);
         }
+    }
+
+    // Обрабатывает правильный ответ пользователя на вопрос викторины.
+    protected function handleCorrectAnswer($user, $currentQuestionId, $chatId): void
+    {
+        // Определение ID следующего вопроса
+        $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
+        $text = 'Молодец! 😊';
+        $replyMarkup = null;
+
+        if (!is_null($nextQuestionId)) {
+            // Получение следующего вопроса и создание клавиатуры с ответами
+            $nextQuestion = Question::with('answers')->find($nextQuestionId);
+            $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
+            $text .= ' Следующий вопрос:' . PHP_EOL . $nextQuestion->text;
+            $replyMarkup = json_encode(['inline_keyboard' => $keyboard]);
+
+            $state = 'quiz_in_progress';
+            $questionId = $nextQuestionId;
+        } else {
+            $text .= ' Вы прошли quiz. 🥳' . PHP_EOL . 'Теперь спроси что-нибудь у ChatGPT:';
+            $state = 'quiz_completed';
+            $questionId = null; // Очищаем ID текущего вопроса
+        }
+
+        // Обновляем состояние пользователя
+        UserState::updateOrCreate(
+            ['user_id' => $user->id],
+            ['state' => $state, 'current_question_id' => $questionId]
+        );
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $text,
+            'reply_markup' => $replyMarkup
+        ]);
+    }
+
+    // Обрабатывает неправильный ответ пользователя.
+    protected function handleIncorrectAnswer($chatId): void
+    {
+        $text = 'Не правильно 😔. Подумайте еще раз.';
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $text,
+        ]);
     }
 }
