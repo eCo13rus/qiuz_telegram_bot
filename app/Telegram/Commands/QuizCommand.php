@@ -37,36 +37,33 @@ class QuizCommand extends Command
         ]);
     }
 
+    // Вычисляем сколько нужно вывести кнопок с ответами
     public static function createQuestionKeyboard($question): array
     {
         $keyboard = [];
-
         $answers = $question->answers->toArray();
 
-        // Первая строка кнопок
-        $keyboard[] = [
-            [
-                'text' => $answers[0]['text'],
-                'callback_data' => "question_{$question->id}_answer_{$answers[0]['id']}" // Callback данные первой кнопки
-            ],
-            [
-                'text' => $answers[1]['text'],
-                'callback_data' => "question_{$question->id}_answer_{$answers[1]['id']}" // Callback данные второй кнопки
-            ]
-        ];
+        for ($i = 0; $i < count($answers); $i += 2) {
+            $row = [];
 
-        // Вторая строка кнопок
-        $keyboard[] = [
-            [
-                'text' => $answers[2]['text'],
-                'callback_data' => "question_{$question->id}_answer_{$answers[2]['id']}" // Callback данные третьей кнопки
-            ],
-            [
-                'text' => $answers[3]['text'],
-                'callback_data' => "question_{$question->id}_answer_{$answers[3]['id']}" // Callback данные четвертой кнопки
-            ]
-        ];
+            if (isset($answers[$i])) {
+                $row[] = [
+                    'text' => $answers[$i]['text'],
+                    'callback_data' => "question_{$question->id}_answer_{$answers[$i]['id']}"
+                ];
+            }
 
+            if (isset($answers[$i + 1])) {
+                $row[] = [
+                    'text' => $answers[$i + 1]['text'],
+                    'callback_data' => "question_{$question->id}_answer_{$answers[$i + 1]['id']}"
+                ];
+            }
+
+            if (!empty($row)) {
+                $keyboard[] = $row;
+            }
+        }
         return $keyboard;
     }
 }

@@ -7,10 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Question extends Model
 {
-    protected $fillable = ['text'];
+    use HasFactory;
+
+    protected $fillable = ['text', 'explanation'];
 
     public function answers()
     {
         return $this->hasMany(Answer::class);
+    }
+
+    public function pictures()
+    {
+        return $this->hasMany(Picture::class);
     }
 }

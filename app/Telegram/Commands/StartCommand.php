@@ -21,7 +21,7 @@ class StartCommand extends Command
     {
         try {
             $this->replyWithChatAction(['action' => Actions::TYPING]);
-            $this->replyWithMessage(['text' => 'Привет! Это квиз-игра с нашим ботом. Чтобы продолжить, выбери команду /quiz']);
+            $this->replyWithMessage(['text' => 'Привет! 🤗' . PHP_EOL . 'Это квиз-игра с нашим ботом. Чтобы продолжить, используй команду /quiz']);
         } catch (TelegramResponseException $e) {
             if ($e->getCode() == 403) {
                 Log::error("Ошибка: бот был заблокирован пользователем. Исключение: {$e->getMessage()}");
