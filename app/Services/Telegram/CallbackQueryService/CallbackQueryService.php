@@ -78,6 +78,16 @@ class CallbackQueryService
         }
     }
 
+    // Обрабатывает неправильный ответ пользователя.
+    protected function handleIncorrectAnswer($chatId): void
+    {
+        $text = 'Не правильно 😔. Подумайте еще раз.';
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $text,
+        ]);
+    }
+
     // Обрабатываем правильный ответ пользователя на вопрос.
     protected function handleCorrectAnswer($user, $currentQuestionId, $chatId): void
     {
@@ -114,7 +124,7 @@ class CallbackQueryService
     {
         $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
-        $nextQuestionStrong = '<strong>' . "{$nextQuestionId}{$nextQuestion}" . '</strong>' ;
+        $nextQuestionStrong = '<strong>' . "{$nextQuestionId}{$nextQuestion}" . '</strong>';
 
         if ($nextQuestionStrong) {
             $text = $nextQuestion->text . PHP_EOL;
@@ -138,32 +148,72 @@ class CallbackQueryService
     // Если у вопроса есть картинка, отправляет ее вместе с вопросом или просто только вопрос
     protected function sendQuestion(Question $question, $text, $keyboard, $chatId): void
     {
-        if ($question->pictures->isNotEmpty()) {
-            $firstPicture = true;
-            foreach ($question->pictures as $picture) {
-                $imagePath = storage_path('app/public/' . $picture->path);
+        Log::info("Начало отправки вопроса", ['question_id' => $question->id, 'chat_id' => $chatId]);
 
-                if ($firstPicture) {
-                    // Для первого изображения добавляем подпись с текстом вопроса
-                    TelegramFacade::sendPhoto([
-                        'chat_id' => $chatId,
-                        'photo' => InputFile::create($imagePath, basename($imagePath)),
-                        'caption' => $text,
-                        'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-                        'parse_mode' => 'HTML',
-                    ]);
-                    $firstPicture = false;
+        if ($question->pictures->isNotEmpty()) {
+            $mediaGroup = collect();
+
+            foreach ($question->pictures as $key => $picture) {
+                Log::info("Обработка изображения", ['picture_id' => $picture->id]);
+
+                if ($picture->telegram_file_id) {
+                    Log::info("Использование существующего telegram_file_id", ['telegram_file_id' => $picture->telegram_file_id]);
+                    $mediaItem = [
+                        'type' => 'photo',
+                        'media' => $picture->telegram_file_id,
+                    ];
                 } else {
-                    // Для остальных изображений отправляем без подписи
-                    TelegramFacade::sendPhoto([
-                        'chat_id' => $chatId,
-                        'photo' => InputFile::create($imagePath, basename($imagePath)),
-                        // Подпись и кнопки не добавляем
-                    ]);
+                    $imagePath = storage_path('app/public/' . $picture->path);
+                    Log::info("Отправка нового изображения", ['image_path' => $imagePath]);
+                    $mediaItem = [
+                        'type' => 'photo',
+                        'media' => InputFile::create($imagePath, basename($imagePath)),
+                    ];
                 }
+
+                if ($key === 0 && $text) {
+                    $mediaItem['parse_mode'] = 'HTML';
+                    $text = null; // Убедимся, что текст будет добавлен только к первому изображению
+                }
+
+                $mediaGroup->push($mediaItem);
+            }
+
+            Log::info("Отправка группы изображений", ['media_group_count' => $mediaGroup->count()]);
+            $response = TelegramFacade::sendMediaGroup([
+                'chat_id' => $chatId,
+                'media' => $mediaGroup->toJson(JSON_UNESCAPED_SLASHES),
+            ]);
+
+            Log::info("Ответ от sendMediaGroup", ['response' => $response]);
+
+            if ($response && isset($response->result)) {
+                foreach ($response->result as $index => $sentPhoto) {
+                    $telegramFileId = $sentPhoto['photo'][0]['file_id'];
+                    $picture = $question->pictures[$index];
+                    Log::info("Сохранение telegram_file_id для изображения", ['picture_id' => $picture->id, 'telegram_file_id' => $telegramFileId]);
+
+                    if (!$picture->telegram_file_id) {
+                        $picture->telegram_file_id = $telegramFileId;
+                        $picture->save();
+                    }
+                }
+            } else {
+                Log::error("Ошибка в ответе от sendMediaGroup", ['response' => $response]);
+            }
+
+            // Отправляем клавиатуру отдельным сообщением после изображений
+            if ($keyboard) {
+                Log::info("Отправка клавиатуры пользователю");
+                TelegramFacade::sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => 'Выберите вариант ответа:', // Текст может быть любым, который подходит под контекст
+                    'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
+                    'parse_mode' => 'HTML',
+                ]);
             }
         } else {
-            // Если у вопроса нет изображений, отправляем только вопрос
+            Log::info("Отправка текстового сообщения, так как изображений нет");
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
                 'text' => $text,
@@ -171,6 +221,8 @@ class CallbackQueryService
                 'parse_mode' => 'HTML',
             ]);
         }
+
+        Log::info("Конец отправки вопроса");
     }
 
     // Завершает квиз и сбрасывает его состояние
@@ -198,17 +250,5 @@ class CallbackQueryService
         );
 
         Log::info("Квиз завершен для пользователя {$user->id}");
-    }
-
-
-
-    // Обрабатывает неправильный ответ пользователя.
-    protected function handleIncorrectAnswer($chatId): void
-    {
-        $text = 'Не правильно 😔. Подумайте еще раз.';
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $text,
-        ]);
     }
 }

@@ -9,7 +9,7 @@ class Picture extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['path', 'question_id'];
+    protected $fillable = ['path', 'question_id', 'telegram_file_id'];
 
     public function question()
     {
