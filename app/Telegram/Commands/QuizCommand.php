@@ -32,7 +32,8 @@ class QuizCommand extends Command
         $keyboard = $this->createQuestionKeyboard($question);
 
         $this->replyWithMessage([
-            'text' => $question->text,
+            'text' => '<strong>' . $question->text . '</strong>',
+            'parse_mode' => 'HTML',
             'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
         ]);
     }

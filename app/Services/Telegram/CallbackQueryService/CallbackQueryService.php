@@ -123,11 +123,18 @@ class CallbackQueryService
     protected function sendNextQuestion($user, $currentQuestionId, $chatId): bool
     {
         $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
-        $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
-        $nextQuestionStrong = '<strong>' . "{$nextQuestionId}{$nextQuestion}" . '</strong>';
 
-        if ($nextQuestionStrong) {
-            $text = $nextQuestion->text . PHP_EOL;
+        // Проверяем, существует ли следующий вопрос
+        $nextQuestionExists = Question::where('id', $nextQuestionId)->exists();
+
+        if (!$nextQuestionExists) {
+            // Если следующего вопроса нет, завершаем квиз
+            return false; // Возвращаем false, так как вопрос не был отправлен
+        }
+
+        $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
+        if ($nextQuestion) {
+            $text = '<strong>' . $nextQuestion->text . '</strong>' . PHP_EOL;
             $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
@@ -141,7 +148,6 @@ class CallbackQueryService
 
             return true;
         }
-
         return false;
     }
 
@@ -153,7 +159,7 @@ class CallbackQueryService
         if ($question->pictures->isNotEmpty()) {
             $mediaGroup = collect();
 
-            foreach ($question->pictures as $key => $picture) {
+            foreach ($question->pictures as $picture) {
                 Log::info("Обработка изображения", ['picture_id' => $picture->id]);
 
                 if ($picture->telegram_file_id) {
@@ -171,59 +177,28 @@ class CallbackQueryService
                     ];
                 }
 
-                if ($key === 0 && $text) {
-                    $mediaItem['parse_mode'] = 'HTML';
-                    $text = null; // Убедимся, что текст будет добавлен только к первому изображению
-                }
-
                 $mediaGroup->push($mediaItem);
             }
 
             Log::info("Отправка группы изображений", ['media_group_count' => $mediaGroup->count()]);
-            $response = TelegramFacade::sendMediaGroup([
+            TelegramFacade::sendMediaGroup([
                 'chat_id' => $chatId,
-                'media' => $mediaGroup->toJson(JSON_UNESCAPED_SLASHES),
-            ]);
-
-            Log::info("Ответ от sendMediaGroup", ['response' => $response]);
-
-            if ($response && isset($response->result)) {
-                foreach ($response->result as $index => $sentPhoto) {
-                    $telegramFileId = $sentPhoto['photo'][0]['file_id'];
-                    $picture = $question->pictures[$index];
-                    Log::info("Сохранение telegram_file_id для изображения", ['picture_id' => $picture->id, 'telegram_file_id' => $telegramFileId]);
-
-                    if (!$picture->telegram_file_id) {
-                        $picture->telegram_file_id = $telegramFileId;
-                        $picture->save();
-                    }
-                }
-            } else {
-                Log::error("Ошибка в ответе от sendMediaGroup", ['response' => $response]);
-            }
-
-            // Отправляем клавиатуру отдельным сообщением после изображений
-            if ($keyboard) {
-                Log::info("Отправка клавиатуры пользователю");
-                TelegramFacade::sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => 'Выберите вариант ответа:', // Текст может быть любым, который подходит под контекст
-                    'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-                    'parse_mode' => 'HTML',
-                ]);
-            }
-        } else {
-            Log::info("Отправка текстового сообщения, так как изображений нет");
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => $text,
-                'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-                'parse_mode' => 'HTML',
+                'media' => $mediaGroup,
             ]);
         }
 
+        // Отправляем текст вопроса и клавиатуру отдельным сообщением после изображений
+        Log::info("Отправка текстового сообщения с вопросом и клавиатурой");
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $text, // Текст вопроса всегда отправляется, независимо от наличия изображений
+            'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
+            'parse_mode' => 'HTML',
+        ]);
+
         Log::info("Конец отправки вопроса");
     }
+
 
     // Завершает квиз и сбрасывает его состояние
     protected function completeQuiz($user, $chatId): void
