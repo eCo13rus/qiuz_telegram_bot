@@ -34,7 +34,7 @@ return [
         'mybot' => [
             'token' => env('TELEGRAM_BOT_TOKEN', 'YOUR-BOT-TOKEN'),
             'certificate_path' => env('TELEGRAM_CERTIFICATE_PATH', 'YOUR-CERTIFICATE-PATH'),
-            'webhook_url' => env('TELEGRAM_WEBHOOK_URL', 'https://3969-49-13-27-106.ngrok-free.app/telegram-webhook'),
+            'webhook_url' => env('TELEGRAM_WEBHOOK_URL', 'https://fe33-49-13-27-106.ngrok-free.app/telegram-webhook'),
             'commands' => [
                 //Acme\Project\Commands\MyTelegramBot\BotCommand::class
                 App\Telegram\Commands\StartCommand::class,

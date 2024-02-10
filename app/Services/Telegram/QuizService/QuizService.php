@@ -9,14 +9,13 @@ use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use App\Models\Question;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use Telegram\Bot\Keyboard\Keyboard;
 
 class QuizService
 {
     // Обрабатывает неправильный ответ пользователя.
     public function handleIncorrectAnswer(int $chatId): void
     {
-        $text = 'Не правильно 😔. Подумайте еще раз.';
+        $text = '❌ Неверно.' . PHP_EOL;
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => $text,
@@ -29,6 +28,11 @@ class QuizService
         // Логируем начало обработки правильного ответа
         Log::info("Начало обработки правильного ответа пользователя {$user->id} на вопрос {$currentQuestionId}");
 
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>" . PHP_EOL,
+            'parse_mode' => 'HTML',
+        ]);
         // Отправка объяснения текущего вопроса, если оно есть
         $this->sendCurrentQuestionExplanation($currentQuestionId, $chatId);
 
@@ -44,7 +48,7 @@ class QuizService
         $currentQuestion = Question::find($currentQuestionId);
 
         if (!empty($currentQuestion->explanation)) { // Проверяем, есть ли объяснение для текущего вопроса
-            $explanationText = '<em>' . $currentQuestion->explanation . '</em>';
+            $explanationText = '<em>' . '🔸' . $currentQuestion->explanation . '</em>';
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
                 'text' => $explanationText,
@@ -55,20 +59,22 @@ class QuizService
     }
 
     // Загружает следующий вопрос и если есть обновляет состояние пользователя
-    protected function sendNextQuestion(User $user, int $currentQuestionId, int $chatId): bool
+    public function sendNextQuestion(User $user, int $currentQuestionId, int $chatId): bool
     {
+        $totalQuestions = Question::count(); // Получаем общее количество вопросов
+        $questionIndex = Question::where('id', '<=', $currentQuestionId)->count() + 1; // Вычисляем индекс текущего вопроса
+
         $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
 
-        // Проверяем, существует ли следующий вопрос
         $nextQuestionExists = Question::where('id', $nextQuestionId)->exists();
 
         if (!$nextQuestionExists) {
-            return false; // Если следующего вопроса нет, завершаем квиз.
+            return false; // Если следующего вопроса нет, завершаем квиз
         }
 
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
         if ($nextQuestion) {
-            $text = '<strong>' . $nextQuestion->text . '</strong>' . PHP_EOL;
+            $text = '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . PHP_EOL . '</strong>';
             $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
@@ -85,71 +91,91 @@ class QuizService
         return false;
     }
 
-    // Если у вопроса есть картинка, отправляет ее вместе с вопросом или только вопрос
+    // Метод для отправки вопроса пользователю и отправки изображений, связанных с вопросом.
     protected function sendQuestion(Question $question, string $text, array $keyboard, int $chatId): void
     {
-        Log::info("Начало отправки вопроса", ['question_id' => $question->id, 'chat_id' => $chatId]);
+        $mediaGroup = collect();
 
-        if ($question->pictures->isNotEmpty()) {
-            $mediaGroup = collect();
-
-            foreach ($question->pictures as $picture) {
-                Log::info("Обработка изображения", ['picture_id' => $picture->id]);
-
-                if ($picture->telegram_file_id) {
-                    Log::info("Использование существующего telegram_file_id", 
-                    ['telegram_file_id' => $picture->telegram_file_id]);
-
-                    $mediaItem = [
-                        'type' => 'photo',
-                        'media' => $picture->telegram_file_id,
-                    ];
-                } else {
-                    $imagePath = storage_path('app/public/' . $picture->path);
-                    Log::info("Отправка нового изображения", ['image_path' => $imagePath]);
-                    $mediaItem = [
-                        'type' => 'photo',
-                        'media' => InputFile::create($imagePath, basename($imagePath)),
-                    ];
-                }
-
-                $mediaGroup->push($mediaItem);
+        // Перебор всех изображений, связанных с вопросом.
+        foreach ($question->pictures as $picture) {
+            Log::info("Обрабатываем изображение для вопроса", ['question_id' => $question->id, 'picture_id' => $picture->id]);
+            // Пытаемся получить telegram_file_id из базы данных или загружаем картинку и получаем её ID.
+            $telegramFileId = $picture->telegram_file_id ?: $this->sendPictureAndGetFileId($picture, $chatId);
+            // Если ID изображения получен, добавляем его в коллекцию для отправки.
+            if ($telegramFileId) {
+                $mediaGroup->push([
+                    'type' => 'photo',
+                    'media' => $telegramFileId,
+                ]);
             }
-
-            Log::info("Отправка группы изображений", ['media_group_count' => $mediaGroup->count()]);
+        }
+        // Если в коллекции есть изображения для отправки, оправляем их группой.
+        if ($mediaGroup->isNotEmpty()) {
+            Log::info("Отправка группы изображений", ['chat_id' => $chatId]);
             TelegramFacade::sendMediaGroup([
                 'chat_id' => $chatId,
-                'media' => $mediaGroup,
+                'media' => $mediaGroup->toJson(), // Конвертация данных коллекции в формат JSON для отправки.
             ]);
         }
 
-        // Отправляем текст вопроса и клавиатуру отдельным сообщением после изображений
-        Log::info("Отправка текстового сообщения с вопросом и клавиатурой");
+        // Отправка текста вопроса с клавиатурой ответов в том же чате.
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => $text, // Текст вопроса всегда отправляется, независимо от наличия изображений
-            'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
-            'parse_mode' => 'HTML',
+            'text' => $text,
+            'reply_markup' => json_encode(['inline_keyboard' => $keyboard], JSON_UNESCAPED_UNICODE), // Формирование inline клавиатуры.
+            'parse_mode' => 'HTML', // Использование HTML тегов в тексте сообщения.
         ]);
-        Log::info("Конец отправки вопроса");
+        Log::info("Текст вопроса отправлен", ['chat_id' => $chatId, 'question_id' => $question->id]);
     }
 
+    // Метод обрабатывает отправку изображения в Telegram и сохраняет полученный telegram_file_id если его нет в базу данных.
+    protected function sendPictureAndGetFileId($picture, $chatId)
+    {
+        $imagePath = storage_path('app/public/' . $picture->path); // Получаем физический путь к файлу изображения.
+        if (!file_exists($imagePath)) { // Если файл не существует, логируем ошибку.
+            Log::error("Файл изображения не найден", ['imagePath' => $imagePath]);
+            return null; // Прекращаем обработку и возвращаем null.
+        }
 
-    // Завершает квиз и сбрасывает его состояние
+        try {
+            // Отправляем фото в чат Telegram и получаем ответ.
+            $response = TelegramFacade::sendPhoto([
+                'chat_id' => $chatId,
+                'photo' => InputFile::create($imagePath, basename($imagePath)),
+            ]);
+
+            // Проверяем наличие фото в ответе и получаем telegram_file_id.
+            if ($response && $response->getPhoto()) {
+                $photos = $response->getPhoto();
+                $telegramFileId = collect($photos)->last()->fileId; // Получаем последний telegram_file_id из списка фотографий.
+
+                $picture->telegram_file_id = $telegramFileId; // Сохраняем telegram_file_id в объекте картинки.
+                $picture->save(); // Сохраняем изменения в базе данных.
+                Log::info("Фото успешно отправлено и telegram_file_id сохранен", ['picture_id' => $picture->id, 'telegram_file_id' => $telegramFileId]);
+
+                return $telegramFileId; // Возвращаем telegram_file_id.
+            }
+        } catch (\Exception $e) {
+            // В случае исключения логируем подробную информацию.
+            Log::error("Ошибка при отправке изображения", ['exception' => $e->getMessage(), 'imagePath' => $imagePath]);
+        }
+
+        return null;
+    }
+
+    // Завершается квиз и сбрасывается состояние пользователя
     protected function completeQuiz(User $user, int $chatId): void
     {
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => '<strong>' . 'НейроТекстер' . '</strong>' . '
+            'text' => '<strong>' . 'ВОПРОС #7' . '
 
-Кажется вы уже прониклись нейросетями. Самое время попробовать свои навыки в деле. Поможет вам в этом НейроТекстер. 
+🤩 Кажется вы уже прониклись нейросетями. Самое время попробовать свои навыки в деле. Поможет вам в этом [НейроТекстер](https://neuro-texter.ru/). 
 
-Сгенерируйте изображение собаки, которая катается на скейтборде по торговому центру.
-            
-Просто отправьте запрос сообщением и через минуту НейроТекстер пришлёт результат. Посмотрим, что у вас получится.
-
-- С этим заданием по дефолту справятся все, то есть здесь не нужна система оценивания. 
-            ',
+Сгенерируйте изображение собаки, которая катается на скейтборде по магазину. 
+                            
+🖥 Просто отправьте запрос сообщением и через минуту [НейроТекстер](https://neuro-texter.ru/) пришлёт результат. Посмотрим, что у вас получится.
+            ' . '</strong>',
 
             'parse_mode' => 'HTML',
         ]);

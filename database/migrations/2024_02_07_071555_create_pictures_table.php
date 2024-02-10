@@ -6,23 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('pictures', function (Blueprint $table) {
             $table->id();
             $table->string('path');
             $table->unsignedBigInteger('question_id');
+            $table->string('telegram_file_id')->nullable();
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('pictures');

@@ -48,7 +48,7 @@ class ChatGPTMessageService
                     Log::warning('Не закончил квиз', ['userId' => $userId]);
                     TelegramFacade::sendMessage([
                         'chat_id' => $chatId,
-                        'text' => 'Сначало заверши викторину перед тем, как задать вопрос.'
+                        'text' => 'Сначало завершите викторину перед тем, как сделать запрос.'
                     ]);
                 } else {
                     Log::info('Завершил квиз', ['userId' => $userId]);
