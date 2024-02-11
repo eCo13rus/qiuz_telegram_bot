@@ -31,7 +31,6 @@ class QuizService
     // Загружает следующий вопрос и если есть обновляет состояние пользователя
     public function sendNextQuestion(User $user, int $currentQuestionId, int $chatId): bool
     {
-        $totalQuestions = Question::count(); // Получаем общее количество вопросов
         $questionIndex = Question::where('id', '<=', $currentQuestionId)->count() + 1; // Вычисляем индекс текущего вопроса
 
         $nextQuestionId = Question::where('id', '>', $currentQuestionId)->min('id');
