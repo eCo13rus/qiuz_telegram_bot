@@ -32,7 +32,8 @@ class QuizCommand extends Command
         $keyboard = $this->createQuestionKeyboard($question);
 
         $this->replyWithMessage([
-            'text' => '<strong>' . 'ВОПРОС #1' . PHP_EOL  . PHP_EOL . $question->text . PHP_EOL . '</strong>',
+            'text' => '<strong>' . 'ВОПРОС #1' . PHP_EOL  . PHP_EOL . $question->text . PHP_EOL . '</strong>' 
+            . PHP_EOL . '<em>' . 'Выберите вариант ответа:' . '</em>',
             'parse_mode' => 'HTML',
             'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
         ]);
