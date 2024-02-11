@@ -18,7 +18,7 @@ class QuizService
         $currentQuestion = Question::find($currentQuestionId);
 
         if (!empty($currentQuestion->explanation)) { // Проверяем, есть ли объяснение для текущего вопроса
-            $explanationText = '<em>' . '🔸' . $currentQuestion->explanation . '</em>';
+            $explanationText = '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation)  . '</em>';
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
                 'text' => $explanationText,
@@ -43,7 +43,7 @@ class QuizService
 
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
         if ($nextQuestion) {
-            $text = '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . '</strong>';
+            $text =  '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . '</strong>';
             $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
@@ -73,7 +73,7 @@ class QuizService
         $allImagesHaveIds = true;
         $mediaGroup = collect();
 
-        // Перебираем фото
+        // Перебираем изображения
         foreach ($question->pictures as $picture) {
             if (!$picture->telegram_file_id) {
                 // Получаем id изображений и если надо сохраняем .

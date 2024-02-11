@@ -103,7 +103,7 @@ class CallbackQueryService
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>" . PHP_EOL,
+            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>",
             'parse_mode' => 'HTML',
         ]);
         // Отправка объяснения текущего вопроса, если оно есть
