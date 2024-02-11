@@ -43,7 +43,7 @@ class QuizService
 
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
         if ($nextQuestion) {
-            $text = '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . PHP_EOL . '</strong>';
+            $text = '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . '</strong>';
             $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
