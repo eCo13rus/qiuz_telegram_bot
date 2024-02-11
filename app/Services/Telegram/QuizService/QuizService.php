@@ -12,38 +12,8 @@ use Illuminate\Support\Facades\Log;
 
 class QuizService
 {
-    // Обрабатывает неправильный ответ пользователя.
-    public function handleIncorrectAnswer(int $chatId): void
-    {
-        $text = '❌ Неверно.' . PHP_EOL;
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $text,
-        ]);
-    }
-
-    // Обрабатываем правильный ответ пользователя на вопрос.
-    public function handleCorrectAnswer(User $user, int $currentQuestionId, int $chatId): void
-    {
-        // Логируем начало обработки правильного ответа
-        Log::info("Начало обработки правильного ответа пользователя {$user->id} на вопрос {$currentQuestionId}");
-
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>" . PHP_EOL,
-            'parse_mode' => 'HTML',
-        ]);
-        // Отправка объяснения текущего вопроса, если оно есть
-        $this->sendCurrentQuestionExplanation($currentQuestionId, $chatId);
-
-        // Отправка следующего вопроса или завершение квиза, если вопросы закончились
-        if (!$this->sendNextQuestion($user, $currentQuestionId, $chatId)) {
-            $this->completeQuiz($user, $chatId);
-        }
-    }
-
     // Обрабатывает правильный ответ пользователя, отправляя объяснение текущего вопроса и загружая следующий вопрос.
-    protected function sendCurrentQuestionExplanation(int $currentQuestionId, int $chatId): void
+    public function sendCurrentQuestionExplanation(int $currentQuestionId, int $chatId): void
     {
         $currentQuestion = Question::find($currentQuestionId);
 
@@ -95,76 +65,69 @@ class QuizService
     protected function sendQuestion(Question $question, string $text, array $keyboard, int $chatId): void
     {
         $mediaGroup = collect();
+        $allImagesHaveIds = true;
 
-        // Перебор всех изображений, связанных с вопросом.
+        // Проверяем каждое изображение и определяем, нужно ли оно будет загружено.
         foreach ($question->pictures as $picture) {
-            Log::info("Обрабатываем изображение для вопроса", ['question_id' => $question->id, 'picture_id' => $picture->id]);
-            // Пытаемся получить telegram_file_id из базы данных или загружаем картинку и получаем её ID.
-            $telegramFileId = $picture->telegram_file_id ?: $this->sendPictureAndGetFileId($picture, $chatId);
-            // Если ID изображения получен, добавляем его в коллекцию для отправки.
-            if ($telegramFileId) {
+            if (!$picture->telegram_file_id) {
+                // Получаем id изображений.
+                $this->fetchAndSaveTelegramFileId($picture, $chatId);
+                $allImagesHaveIds = false; // Отмечаем, что некоторые изображения были загружены.
+            }
+            if ($picture->telegram_file_id) {
+                // Добавляем изображение в группу, если у него уже есть telegram_file_id.
                 $mediaGroup->push([
                     'type' => 'photo',
-                    'media' => $telegramFileId,
+                    'media' => $picture->telegram_file_id,
                 ]);
             }
         }
-        // Если в коллекции есть изображения для отправки, оправляем их группой.
-        if ($mediaGroup->isNotEmpty()) {
-            Log::info("Отправка группы изображений", ['chat_id' => $chatId]);
+
+        // Отправляем группу изображений, если все изображения были уже загружены ранее или в этом сеансе.
+        if ($mediaGroup->isNotEmpty() && $allImagesHaveIds) {
             TelegramFacade::sendMediaGroup([
                 'chat_id' => $chatId,
-                'media' => $mediaGroup->toJson(), // Конвертация данных коллекции в формат JSON для отправки.
+                'media' => $mediaGroup->toJson(),
             ]);
         }
 
-        // Отправка текста вопроса с клавиатурой ответов в том же чате.
+        // Отправка текста вопроса с клавиатурой ответов.
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => $text,
-            'reply_markup' => json_encode(['inline_keyboard' => $keyboard], JSON_UNESCAPED_UNICODE), // Формирование inline клавиатуры.
-            'parse_mode' => 'HTML', // Использование HTML тегов в тексте сообщения.
+            'reply_markup' => json_encode(['inline_keyboard' => $keyboard], JSON_UNESCAPED_UNICODE),
+            'parse_mode' => 'HTML',
         ]);
-        Log::info("Текст вопроса отправлен", ['chat_id' => $chatId, 'question_id' => $question->id]);
     }
 
-    // Метод обрабатывает отправку изображения в Telegram и сохраняет полученный telegram_file_id если его нет в базу данных.
-    protected function sendPictureAndGetFileId($picture, $chatId)
+    // Если в базе нет сохраненных фото получаем локально по пути где они лежат и сохраняем их telegram_file_id 
+    protected function fetchAndSaveTelegramFileId($picture, $chatId)
     {
-        $imagePath = storage_path('app/public/' . $picture->path); // Получаем физический путь к файлу изображения.
-        if (!file_exists($imagePath)) { // Если файл не существует, логируем ошибку.
-            Log::error("Файл изображения не найден", ['imagePath' => $imagePath]);
-            return null; // Прекращаем обработку и возвращаем null.
-        }
+        $imagePath = storage_path('app/public/' . $picture->path);
+        if (file_exists($imagePath)) {
+            try {
+                // Отправляем фото в Telegram для получения telegram_file_id.
+                $response = TelegramFacade::sendPhoto([
+                    'chat_id' => $chatId,
+                    'photo' => InputFile::create($imagePath, basename($imagePath)),
+                ]);
 
-        try {
-            // Отправляем фото в чат Telegram и получаем ответ.
-            $response = TelegramFacade::sendPhoto([
-                'chat_id' => $chatId,
-                'photo' => InputFile::create($imagePath, basename($imagePath)),
-            ]);
-
-            // Проверяем наличие фото в ответе и получаем telegram_file_id.
-            if ($response && $response->getPhoto()) {
-                $photos = $response->getPhoto();
-                $telegramFileId = collect($photos)->last()->fileId; // Получаем последний telegram_file_id из списка фотографий.
-
-                $picture->telegram_file_id = $telegramFileId; // Сохраняем telegram_file_id в объекте картинки.
-                $picture->save(); // Сохраняем изменения в базе данных.
-                Log::info("Фото успешно отправлено и telegram_file_id сохранен", ['picture_id' => $picture->id, 'telegram_file_id' => $telegramFileId]);
-
-                return $telegramFileId; // Возвращаем telegram_file_id.
+                if ($response && $response->getPhoto()) {
+                    // Получаем telegram_file_id из ответа и сохраняем в модель изображения.
+                    $photos = $response->getPhoto();
+                    $telegramFileId = collect($photos)->last()->fileId;
+                    $picture->telegram_file_id = $telegramFileId;
+                    $picture->save();
+                }
+            } catch (\Exception $e) {
+                // Обработка исключений.
+                Log::error("Exception while sending image: {$e->getMessage()}");
             }
-        } catch (\Exception $e) {
-            // В случае исключения логируем подробную информацию.
-            Log::error("Ошибка при отправке изображения", ['exception' => $e->getMessage(), 'imagePath' => $imagePath]);
         }
-
-        return null;
     }
 
     // Завершается квиз и сбрасывается состояние пользователя
-    protected function completeQuiz(User $user, int $chatId): void
+    public function completeQuiz(User $user, int $chatId): void
     {
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,

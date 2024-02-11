@@ -33,9 +33,11 @@ class CallbackQueryService
                 $this->processCallbackData($parts, $chatId, $callbackQuery);
             }
 
-            TelegramFacade::answerCallbackQuery(['callback_query_id' => $callbackQuery->getId()]);
+            TelegramFacade::answerCallbackQuery([
+                'callback_query_id' => $callbackQuery->getId()
+            ]);
         } catch (\Telegram\Bot\Exceptions\TelegramResponseException $e) {
-            if (strpos($e->getMessage(), 'bot was blocked by the user') !== false) {
+            if (strpos($e->getMessage(), 'бот был заблокирован пользователем') !== false) {
                 Log::warning('Пользователь заблокировал бота при взаимодействии с inline-клавиатурой', ['chatId' => $chatId]);
 
                 // Обновление статуса пользователя в базе данных как "неактивный"
@@ -45,7 +47,7 @@ class CallbackQueryService
                     Log::info('Статус пользователя обновлен на неактивный', ['userId' => $chatId]);
                 }
             } else {
-                throw $e; // Переброс других исключений для обработки в другом месте
+                throw $e;
             }
         }
     }
@@ -70,9 +72,9 @@ class CallbackQueryService
 
         try {
             if ($isCorrect) {
-                $this->quizService->handleCorrectAnswer($user, $currentQuestionId, $chatId);
+                $this->handleCorrectAnswer($user, $currentQuestionId, $chatId);
             } else {
-                $this->quizService->handleIncorrectAnswer($chatId);
+                $this->handleIncorrectAnswer($chatId);
             }
         } catch (QueryException $exception) {
             // Обработка исключения при возникновении ошибки запроса к БД
@@ -80,6 +82,36 @@ class CallbackQueryService
                 'chat_id' => $chatId,
                 'text' => 'Извините, произошла ошибка. Пожалуйста, попробуйте ещё раз.'
             ]);
+        }
+    }
+
+    // Обрабатывает неправильный ответ пользователя.
+    public function handleIncorrectAnswer(int $chatId): void
+    {
+        $text = '❌ Неверно.' . PHP_EOL;
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $text,
+        ]);
+    }
+
+    // Обрабатываем правильный ответ пользователя на вопрос.
+    public function handleCorrectAnswer(User $user, int $currentQuestionId, int $chatId): void
+    {
+        // Логируем начало обработки правильного ответа
+        Log::info("Начало обработки правильного ответа пользователя {$user->id} на вопрос {$currentQuestionId}");
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>" . PHP_EOL,
+            'parse_mode' => 'HTML',
+        ]);
+        // Отправка объяснения текущего вопроса, если оно есть
+        $this->quizService->sendCurrentQuestionExplanation($currentQuestionId, $chatId);
+
+        // Отправка следующего вопроса или завершение квиза, если вопросы закончились
+        if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
+            $this->quizService->completeQuiz($user, $chatId);
         }
     }
 }
