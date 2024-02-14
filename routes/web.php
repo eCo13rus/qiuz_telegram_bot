@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Services\Telegram\SDXLCallbackService\SDXLCallbackService;
 use App\Http\Controllers\TelegramBotController;
 
 /*
@@ -22,6 +23,6 @@ Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhoo
 
 Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
 
-Route::get('/dalle-callback/{chat_id}', [TelegramBotController::class, 'processDalleCallback'])->name('dalle.callback');
+Route::get('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
 
-Route::post('/dalle-callback/{chat_id}', [TelegramBotController::class, 'processDalleCallback'])->name('dalle.callback');
+Route::post('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
