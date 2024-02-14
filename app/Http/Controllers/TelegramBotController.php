@@ -14,14 +14,14 @@ use Telegram\Bot\FileUpload\InputFile;
 
 class TelegramBotController extends Controller
 {
-    protected $chatGPTService;
+    protected $SDXLService;
 
     protected $callbackQueryService;
 
     // Внедряем сервисы
-    public function __construct(SDXLService $chatGPTService, CallbackQueryService $callbackQueryService)
+    public function __construct(SDXLService $SDXLService, CallbackQueryService $callbackQueryService)
     {
-        $this->chatGPTService = $chatGPTService;
+        $this->SDXLService = $SDXLService;
         $this->callbackQueryService = $callbackQueryService;
     }
 
@@ -35,7 +35,7 @@ class TelegramBotController extends Controller
         if ($update->isType('callback_query')) {
             $this->handleCallbackQuery($update->getCallbackQuery());
         } elseif ($update->isType('message')) {
-            $this->dalleMessage($update);
+            $this->sdxlMessage($update);
         }
 
         return response()->json(['status' => 'Ok']);
@@ -105,10 +105,10 @@ class TelegramBotController extends Controller
         $this->callbackQueryService->handleCallbackQuery($callbackQuery);
     }
 
-    protected function dalleMessage(Update $update): void
+    protected function sdxlMessage(Update $update): void
     {
-        // Получение экземпляра ChatGPTMessageService через Service Container
-        $chatGPTMessageService = app()->make(\App\Services\Telegram\SDXLMessageService\SDXLMessageService::class);
-        $chatGPTMessageService->handleMessage($update);
+        // Получение экземпляра SDXLMessageService через Service Container
+        $SdxlMessageService = app()->make(\App\Services\Telegram\SDXLMessageService\SDXLMessageService::class);
+        $SdxlMessageService->handleMessage($update);
     }
 }
