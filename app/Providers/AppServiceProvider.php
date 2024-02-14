@@ -27,7 +27,6 @@ class AppServiceProvider extends ServiceProvider
             \App\Telegram\Commands\QuizCommand::class,
         ]);
 
-        // Добавь этот блок кода для логирования SQL запросов
         if ($this->app->environment('local')) { // Логирование включается только в локальной среде
             DB::listen(function ($query) {
                 Log::info('SQL Query', [

@@ -13,19 +13,14 @@ use Illuminate\Support\Facades\Log;
 class QuizService
 {
     // Обрабатывает правильный ответ пользователя, отправляя объяснение текущего вопроса и загружая следующий вопрос.
-    public function sendCurrentQuestionExplanation(int $currentQuestionId, int $chatId): void
+    public function getCurrentQuestionExplanation(int $currentQuestionId): ?string
     {
         $currentQuestion = Question::find($currentQuestionId);
 
-        if (!empty($currentQuestion->explanation)) { // Проверяем, есть ли объяснение для текущего вопроса
-            $explanationText = '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation)  . '</em>';
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => $explanationText,
-                'parse_mode' => 'HTML',
-            ]);
-            Log::info("Отправлено объяснение для вопроса {$currentQuestionId}");
+        if (!empty($currentQuestion->explanation)) {
+            return '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation) . '</em>';
         }
+        return null;
     }
 
     // Загружает следующий вопрос и если есть обновляет состояние пользователя

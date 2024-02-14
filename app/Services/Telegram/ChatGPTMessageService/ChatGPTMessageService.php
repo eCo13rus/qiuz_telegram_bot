@@ -29,21 +29,17 @@ class ChatGPTMessageService
 
         Log::info('Received message', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
 
-        // Проверяем, является ли сообщение командой
         try {
-            if (!$this->isCommand($messageText)) {
+            // Проверяем, что $messageText не null и не является командой
+            if ($messageText !== null && !$this->isCommand($messageText)) {
                 Log::debug('Смотрим если есть пользователь в базе', ['telegram_id' => $userId]);
 
-                // Создаем пользователя в базе данных если нет           
                 $user = User::firstOrCreate(['telegram_id' => $userId]);
 
-                // Логируем статус пользователя (новый или существующий)
                 Log::info($user->wasRecentlyCreated ? 'Новый пользователь' : 'Existing user', ['userId' => $userId]);
 
-                // Проверяем состояние пользователя
                 $userState = $user->state()->first();
 
-                // Если пользователь не завершил викторину, отправляем сообщение с просьбой завершить
                 if (is_null($userState) || $userState->state !== 'quiz_completed') {
                     Log::warning('Не закончил квиз', ['userId' => $userId]);
                     TelegramFacade::sendMessage([

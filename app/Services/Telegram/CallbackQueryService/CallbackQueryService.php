@@ -101,13 +101,24 @@ class CallbackQueryService
         // Логируем начало обработки правильного ответа
         Log::info("Начало обработки правильного ответа пользователя {$user->id} на вопрос {$currentQuestionId}");
 
+        // Подготовка текста о правильном ответе
+        $correctAnswerText = "<strong>Ответ:" . PHP_EOL . PHP_EOL . "✅ Верно!" . "</strong>";
+
+        // Получение объяснения текущего вопроса, если оно есть
+        $explanationText = $this->quizService->getCurrentQuestionExplanation($currentQuestionId);
+
+        // Формирование окончательного текста сообщения
+        $finalMessageText = $correctAnswerText;
+        if (!empty($explanationText)) {
+            $finalMessageText .= PHP_EOL . PHP_EOL . $explanationText;
+        }
+
+        // Отправка сообщения пользователю
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => "<strong>" . "Ответ:" . PHP_EOL .  PHP_EOL .  "✅ Верно!" . "</strong>",
+            'text' => $finalMessageText,
             'parse_mode' => 'HTML',
         ]);
-        // Отправка объяснения текущего вопроса, если оно есть
-        $this->quizService->sendCurrentQuestionExplanation($currentQuestionId, $chatId);
 
         // Отправка следующего вопроса или завершение квиза, если вопросы закончились
         if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {

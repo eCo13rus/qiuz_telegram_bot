@@ -22,4 +22,6 @@ Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhoo
 
 Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
 
-Route::post('/chatgpt/callback/{chat_id}', [TelegramBotController::class, 'requestChatGPT'])->name('chatgpt.request');
+Route::get('/dalle-callback/{chat_id}', [TelegramBotController::class, 'processDalleCallback'])->name('dalle.callback');
+
+Route::post('/dalle-callback/{chat_id}', [TelegramBotController::class, 'processDalleCallback'])->name('dalle.callback');
