@@ -48,7 +48,7 @@ class SDXLMessageService
                     ]);
                 } else {
                     Log::info('Завершил квиз', ['userId' => $userId]);
-                    $this->requestChatGPT($chatId, $messageText);
+                    $this->requestSDXL($chatId, $messageText);
                 }
             }
         } catch (\Telegram\Bot\Exceptions\TelegramResponseException $e) {
@@ -81,7 +81,7 @@ class SDXLMessageService
     }
 
     //В конце квиза юзер вводит сообщение ChatGPT,отправляеем запрос и возвращаем ответ пользователю.
-    protected function requestChatGPT(int $chat_id, string $messageText): void
+    protected function requestSDXL(int $chat_id, string $messageText): void
     {
         $responseText = $this->sdxlService->handleRequest($messageText, $chat_id);
 
