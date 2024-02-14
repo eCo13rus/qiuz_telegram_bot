@@ -6,7 +6,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
 
-class ChatGPTService
+class SDXLService
 {
     protected $client;
     protected $apiKey;

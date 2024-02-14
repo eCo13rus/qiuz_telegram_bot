@@ -1,25 +1,25 @@
 <?php
 
-namespace App\Services\Telegram\ChatGPTMessageService;
+namespace App\Services\Telegram\SDXLMessageService;
 
 use App\Models\User;
 use App\Models\UserState;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
-use App\Providers\ChatGPTService;
+use App\Providers\SDXLService;
 use Telegram\Bot\Objects\Update;
 
 // Сервис для обработки текстовых сообщений от пользователей прохождения викторины.
-class ChatGPTMessageService
+class SDXLMessageService
 {
-    protected $chatGPTService;
+    protected $sdxlService;
 
-    public function __construct(ChatGPTService $chatGPTService)
+    public function __construct(SDXLService $sdxlService)
     {
-        $this->chatGPTService = $chatGPTService;
+        $this->sdxlService = $sdxlService;
     }
 
-    //Обработка текстового сообщения от юзера ChatGPT
+    //Обработка текстового сообщения от юзера SDXL
     public function handleMessage(Update $update): void
     {
         $message = $update->getMessage();
@@ -83,7 +83,7 @@ class ChatGPTMessageService
     //В конце квиза юзер вводит сообщение ChatGPT,отправляеем запрос и возвращаем ответ пользователю.
     protected function requestChatGPT(int $chat_id, string $messageText): void
     {
-        $responseText = $this->chatGPTService->handleRequest($messageText, $chat_id);
+        $responseText = $this->sdxlService->handleRequest($messageText, $chat_id);
 
         TelegramFacade::sendMessage([
             'chat_id' => $chat_id,

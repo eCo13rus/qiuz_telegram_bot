@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
-use App\Providers\ChatGPTService;
+use App\Providers\SDXLService;
 use Telegram\Bot\Objects\Update;
 use App\Services\Telegram\CallbackQueryService\CallbackQueryService;
 use Telegram\Bot\Objects\CallbackQuery;
@@ -19,7 +19,7 @@ class TelegramBotController extends Controller
     protected $callbackQueryService;
 
     // Внедряем сервисы
-    public function __construct(ChatGPTService $chatGPTService, CallbackQueryService $callbackQueryService)
+    public function __construct(SDXLService $chatGPTService, CallbackQueryService $callbackQueryService)
     {
         $this->chatGPTService = $chatGPTService;
         $this->callbackQueryService = $callbackQueryService;
@@ -108,7 +108,7 @@ class TelegramBotController extends Controller
     protected function dalleMessage(Update $update): void
     {
         // Получение экземпляра ChatGPTMessageService через Service Container
-        $chatGPTMessageService = app()->make(\App\Services\Telegram\ChatGPTMessageService\ChatGPTMessageService::class);
+        $chatGPTMessageService = app()->make(\App\Services\Telegram\SDXLMessageService\SDXLMessageService::class);
         $chatGPTMessageService->handleMessage($update);
     }
 }
