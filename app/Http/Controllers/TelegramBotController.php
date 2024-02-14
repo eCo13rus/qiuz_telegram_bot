@@ -44,7 +44,7 @@ class TelegramBotController extends Controller
     // Обрабатывает колбэк от SDXL API
     public function processDalleCallback(Request $request, $chatId)
     {
-        Log::info("Получен колбэк от DALL-E 3", ['chatId' => $chatId, 'requestData' => $request->all()]);
+        Log::info("Получен колбэк от SDXL", ['chatId' => $chatId, 'requestData' => $request->all()]);
 
         $data = $request->json()->all();
 
@@ -71,7 +71,7 @@ class TelegramBotController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    // Обрабатывает статус 'success' колбэка от SDXLAPI
+    // Обрабатывает статус 'success' колбэка от SDXL API
     protected function handleProcessingStatus($data, $chatId)
     {
         Log::info("Запрос все еще обрабатывается", ['data' => $data]);

@@ -5,7 +5,6 @@ namespace App\Providers;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
-use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 
 class ChatGPTService
 {
