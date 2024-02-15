@@ -100,7 +100,7 @@ class SDXLMessageService
                 ['state' => $initialState],
             );
 
-            Log::info('Состояние пользователя сбрасывается после взаимодействия с ChatGPT', ['userId' => $user->id]);
+            Log::info('Состояние пользователя сбрасывается после взаимодействия с SDXL', ['userId' => $user->id]);
         } else {
             Log::error('Пользователь не найден при попытке сбросить состояние', ['chatId' => $chat_id]);
         }

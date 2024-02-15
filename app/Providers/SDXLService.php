@@ -86,7 +86,7 @@ class SDXLService
 
     public function queryDalleApi(string $prompt, int $chatId): array
     {
-        $callbackUrl = "https://af8a1faee7ec00e6872ed2e68ed42be4.serveo.net/dalle-callback/" . $chatId;
+        $callbackUrl = $callbackUrl = env('DALLE_CALLBACK_BASE_URL') . "/dalle-callback/" . $chatId;
 
         Log::info("Выполняется запрос к gen-api.ru для генерации изображения", ['prompt' => $prompt, 'chatId' => $chatId, 'callbackUrl' => $callbackUrl]);
 
