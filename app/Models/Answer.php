@@ -16,8 +16,9 @@ class Answer extends Model
         return $this->belongsTo(Question::class);
     }
 
+    // В модели Answer
     public function users()
     {
-        return $this->belongsToMany(User::class, 'user_quiz_responses');
+        return $this->hasMany(UserQuizResponse::class);
     }
 }

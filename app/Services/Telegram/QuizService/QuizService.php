@@ -133,6 +133,8 @@ class QuizService
     // Завершается квиз и сбрасывается состояние пользователя
     public function completeQuiz(User $user, int $chatId): void
     {
+        Log::info("Завершение квиза для пользователя {$user->id} в чате {$chatId}");
+
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => '<strong>' . 'ВОПРОС #7' . '
@@ -148,11 +150,48 @@ class QuizService
             'parse_mode' => 'HTML',
         ]);
 
+        $correctAnswersCount = $this->calculateQuizResults($user);
+
+        $resultMessage = $this->getResultMessage($correctAnswersCount);
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $resultMessage,
+            'parse_mode' => 'HTML',
+        ]);
+
         UserState::updateOrCreate(
             ['user_id' => $user->id],
             ['state' => 'quiz_completed', 'current_question_id' => null]
         );
 
         Log::info("Квиз завершен для пользователя {$user->id}");
+    }
+
+    public function calculateQuizResults(User $user): int
+    {
+        // Получаем количество правильных ответов, выбранных пользователем
+        $correctAnswersCount = $user->quizResponses()
+            ->where('is_correct', true)
+            ->count();
+        Log::info("Подсчет результатов квиза для пользователя {$user->id}. Правильных ответов: {$correctAnswersCount}");
+
+        return $correctAnswersCount;
+    }
+
+    protected function getResultMessage(int $score): string
+    {
+        if ($score <= 2) {
+            $result = '🤓 Ученик.';
+        } elseif ($score <= 5) {
+            $result = '😏 Уверенный юзер.';
+        } else {
+            $result = '😎 Всевидящее око.';
+        }
+
+        $additionalMessage = "\n\n😳 Неожиданные результаты, верно?\n\nТеперь ты точно убедился, что нейросети - важная часть современного мира и сейчас самое время начать их изучать.\n\n🎁 А чтобы старт был легче, держи бонусные токены для НейроТекстера (https://neuro-texter.ru/).\n\nС ними ты сможешь создать курсовую, рекламный пост, стихотворение, картинку и много чего еще. Скорее переходи: https://neuro-texter.ru";
+
+        Log::info("Итоговое сообщение для пользователя сформировано: {$result}");
+        return $result . $additionalMessage;
     }
 }

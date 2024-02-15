@@ -19,7 +19,7 @@ class SDXLMessageService
         $this->sdxlService = $sdxlService;
     }
 
-    //Обработка текстового сообщения от юзера SDXL
+    //Обработка текстового сообщения от юзера SDXL и проверка его состония
     public function handleMessage(Update $update): void
     {
         $message = $update->getMessage();
@@ -80,7 +80,7 @@ class SDXLMessageService
         return false;
     }
 
-    //В конце квиза юзер вводит сообщение ChatGPT,отправляеем запрос и возвращаем ответ пользователю.
+    //В конце квиза юзер вводит сообщение SDXL,отправляеем запрос и возвращаем ответ пользователю.
     protected function requestSDXL(int $chat_id, string $messageText): void
     {
         $responseText = $this->sdxlService->handleRequest($messageText, $chat_id);
