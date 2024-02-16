@@ -12,17 +12,6 @@ use Illuminate\Support\Facades\Log;
 
 class QuizService
 {
-    // Обрабатывает правильный ответ пользователя, отправляя объяснение текущего вопроса и загружая следующий вопрос.
-    public function getCurrentQuestionExplanation(int $currentQuestionId): ?string
-    {
-        $currentQuestion = Question::find($currentQuestionId);
-
-        if (!empty($currentQuestion->explanation)) {
-            return '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation) . '</em>';
-        }
-        return null;
-    }
-
     // Загружает следующий вопрос и если есть обновляет состояние пользователя
     public function sendNextQuestion(User $user, int $currentQuestionId, int $chatId): bool
     {

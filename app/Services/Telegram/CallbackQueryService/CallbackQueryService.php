@@ -7,7 +7,6 @@ use App\Models\Question;
 use Telegram\Bot\Objects\CallbackQuery;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
 use App\Services\Telegram\QuizService\QuizService;
 
 class CallbackQueryService
@@ -43,7 +42,6 @@ class CallbackQueryService
         }
     }
 
-
     // Обрабатывает данные обратного вызова от Telegram, связанные с викториной.
     protected function processCallbackData(array $parts, int $chatId, CallbackQuery $callbackQuery): void
     {
@@ -76,7 +74,7 @@ class CallbackQueryService
 
         // Получение объяснения текущего вопроса, если оно есть и ответ правильный
         if ($isCorrect) {
-            $explanationText = $this->quizService->getCurrentQuestionExplanation($currentQuestionId);
+            $explanationText = $this->getCurrentQuestionExplanation($currentQuestionId);
             if (!empty($explanationText)) {
                 $messageText .= "\n\n" . $explanationText; // Добавляем объяснение к сообщению
             }
@@ -93,5 +91,16 @@ class CallbackQueryService
         if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
             $this->quizService->completeQuiz($user, $chatId);
         }
+    }
+
+    // Обрабатывает правильный ответ пользователя, отправляя объяснение текущего вопроса и загружая следующий вопрос.
+    public function getCurrentQuestionExplanation(int $currentQuestionId): ?string
+    {
+        $currentQuestion = Question::find($currentQuestionId);
+
+        if (!empty($currentQuestion->explanation)) {
+            return '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation) . '</em>';
+        }
+        return null;
     }
 }
