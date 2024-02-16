@@ -80,7 +80,7 @@ class SDXLMessageService
         return false;
     }
 
-    //В конце квиза юзер вводит сообщение SDXL,отправляеем запрос и возвращаем ответ пользователю.
+    //В конце квиза юзер вводит сообщение в SDXL на генерацию изображения,отправляеем запрос и возвращаем ответ пользователю.
     protected function requestSDXL(int $chat_id, string $messageText): void
     {
         $responseText = $this->sdxlService->handleRequest($messageText, $chat_id);

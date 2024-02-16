@@ -59,54 +59,42 @@ class CallbackQueryService
         Log::info("User fetched or created", ['userId' => $user->id]);
 
         // Проверка правильности ответа
-        try {
-            $isCorrect = Question::find($currentQuestionId)
-                ->answers()
-                ->where('id', $currentAnswerId)
-                ->where('is_correct', true)
-                ->exists();
+        $isCorrect = Question::find($currentQuestionId)
+            ->answers()
+            ->where('id', $currentAnswerId)
+            ->where('is_correct', true)
+            ->exists();
 
-            // Сохранение ответа пользователя
-            $user->quizResponses()->create([
-                'answer_id' => $currentAnswerId,
-                'is_correct' => $isCorrect,
-            ]);
+        // Сохранение ответа пользователя
+        $user->quizResponses()->create([
+            'answer_id' => $currentAnswerId,
+            'is_correct' => $isCorrect,
+        ]);
 
-            // Отправка сообщения пользователю в зависимости от правильности ответа
-            $messageText = $isCorrect ? "✅ Верно!" : "❌ Неверно.";
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => $messageText,
-            ]);
+        // Формирование текста сообщения
+        $messageText = $isCorrect ? "✅ Верно!" : "❌ Неверно.";
 
-            // Получение объяснения текущего вопроса, если оно есть и ответ правильный
-            if ($isCorrect) {
-                $explanationText = $this->quizService->getCurrentQuestionExplanation($currentQuestionId);
-                if (!empty($explanationText)) {
-                    TelegramFacade::sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => $explanationText,
-                        'parse_mode' => 'HTML',
-                    ]);
-                }
+        // Получение объяснения текущего вопроса, если оно есть и ответ правильный
+        if ($isCorrect) {
+            $explanationText = $this->quizService->getCurrentQuestionExplanation($currentQuestionId);
+            if (!empty($explanationText)) {
+                $messageText .= "\n\n" . $explanationText; // Добавляем объяснение к сообщению
             }
+        }
 
-            // Проверка и отправка следующего вопроса или завершение викторины
-            if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
-                $this->quizService->completeQuiz($user, $chatId);
-            }
-        } catch (QueryException $exception) {
-            // Логирование ошибки запроса
-            Log::error("Ошибка запроса к БД", [
-                'message' => $exception->getMessage(),
-                'exception' => $exception,
-            ]);
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => 'Извините, произошла ошибка. Пожалуйста, попробуйте ещё раз.'
-            ]);
+        // Отправка сообщения пользователю
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $messageText,
+            'parse_mode' => 'HTML',
+        ]);
+
+        // Проверка и отправка следующего вопроса или завершение викторины
+        if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
+            $this->quizService->completeQuiz($user, $chatId);
         }
     }
+
 
 
     // // Обрабатывает неправильный ответ пользователя.

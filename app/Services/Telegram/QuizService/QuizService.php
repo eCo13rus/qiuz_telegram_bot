@@ -130,10 +130,21 @@ class QuizService
         }
     }
 
+    public function resetUserQuizResponses(User $user): void
+    {
+        $user->quizResponses()->delete(); // Это удалит все ответы из user_quiz_responses для данного пользователя
+        Log::info("Ответы пользователя {$user->id} сброшены.");
+    }
+
     // Завершается квиз и сбрасывается состояние пользователя
     public function completeQuiz(User $user, int $chatId): void
     {
         Log::info("Завершение квиза для пользователя {$user->id} в чате {$chatId}");
+
+
+        $correctAnswersCount = $this->calculateQuizResults($user);
+
+        $resultMessage = $this->getResultMessage($correctAnswersCount);
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
@@ -150,9 +161,9 @@ class QuizService
             'parse_mode' => 'HTML',
         ]);
 
-        $correctAnswersCount = $this->calculateQuizResults($user);
+        // Сбрасываем предыдущие ответы
+        $this->resetUserQuizResponses($user);
 
-        $resultMessage = $this->getResultMessage($correctAnswersCount);
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
