@@ -9,6 +9,7 @@ use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use App\Models\Question;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use App\Models\GeneralPicture;
 
 class QuizService
 {
@@ -111,12 +112,15 @@ class QuizService
                     $telegramFileId = collect($photos)->last()->fileId;
                     $picture->telegram_file_id = $telegramFileId;
                     $picture->save();
+
+                    return $telegramFileId;
                 }
             } catch (\Exception $e) {
                 // Обработка исключений.
                 Log::error("Exception while sending image: {$e->getMessage()}");
             }
         }
+        return null;
     }
 
     // Обновляет таблицу с ответами для текущего пользователя
@@ -130,11 +134,6 @@ class QuizService
     public function completeQuiz(User $user, int $chatId): void
     {
         Log::info("Завершение квиза для пользователя {$user->id} в чате {$chatId}");
-
-
-        $correctAnswersCount = $this->calculateQuizResults($user);
-
-        $resultMessage = $this->getResultMessage($correctAnswersCount);
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
@@ -151,14 +150,36 @@ class QuizService
             'parse_mode' => 'HTML',
         ]);
 
-        // Сбрасываем предыдущие ответы
-        $this->resetUserQuizResponses($user);
+        $score = $this->calculateQuizResults($user);
 
+        // Отправка результата квиза и фото звания
+        $resultMessages = $this->getResultMessage($score);
+
+        // Отправляем текст с званием
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => $resultMessage,
+            'text' => $resultMessages['title'],
             'parse_mode' => 'HTML',
         ]);
+
+        // Отправляем фото, соответствующее званию
+        $telegramFileId = $this->fetchResultImage($score, $chatId);
+        if ($telegramFileId) {
+            TelegramFacade::sendPhoto([
+                'chat_id' => $chatId,
+                'photo' => $telegramFileId,
+            ]);
+        }
+
+        // Отправляем дополнительное сообщение
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $resultMessages['additional'],
+            'parse_mode' => 'HTML',
+        ]);
+
+        // Сбрасываем предыдущие ответы
+        $this->resetUserQuizResponses($user);
 
         UserState::updateOrCreate(
             ['user_id' => $user->id],
@@ -168,6 +189,7 @@ class QuizService
         Log::info("Квиз завершен для пользователя {$user->id}");
     }
 
+    //  Считает колличество правильных ответов
     public function calculateQuizResults(User $user): int
     {
         // Получаем количество правильных ответов, выбранных пользователем
@@ -179,7 +201,37 @@ class QuizService
         return $correctAnswersCount;
     }
 
-    protected function getResultMessage(int $score): string
+    // Определяет звание пользователя и выдает соответствующее изображение
+    protected function fetchResultImage(int $score, $chatId)
+    {
+        if ($score <= 2) {
+            $imagePath = 'questions/photo6.jpeg'; // Для звания "Ученик"
+        } elseif ($score <= 5) {
+            $imagePath = 'questions/photo5.jpeg'; // Для звания "Уверенный юзер"
+        } else {
+            $imagePath = 'questions/photo4.jpeg'; // Для звания "Всевидящее око"
+        }
+
+        // Пытаемся найти изображение в базе данных
+        $generalPicture = GeneralPicture::firstOrCreate(['path' => $imagePath]);
+
+        // Если у изображения нет telegram_file_id, загружаем и сохраняем
+        if (!$generalPicture->telegram_file_id) {
+            // Загружаем изображение и получаем telegram_file_id, если его нет
+            $telegramFileId = $this->fetchAndSaveTelegramFileId($generalPicture, $chatId);
+            if ($telegramFileId) {
+                return $telegramFileId; // Используем полученный telegram_file_id для отправки
+            }
+        } else {
+            return $generalPicture->telegram_file_id; // Используем существующий telegram_file_id для отправки
+        }
+
+        // Возвращаем null или ID запасного изображения, если не удалось загрузить основное изображение
+        return null;
+    }
+
+    // Выводит финольное сообщение с информацией
+    protected function getResultMessage(int $score): array
     {
         if ($score <= 2) {
             $result = '🤓 Ученик.';
@@ -189,9 +241,14 @@ class QuizService
             $result = '😎 Всевидящее око.';
         }
 
+        $titleMessage = "<strong>Твоё звание: {$result}</strong>\n\n";
         $additionalMessage = "Правильные ответы: {$score}" . "<strong>\n\n😳 Неожиданные результаты, верно?</strong>" . "\n\nТеперь ты точно убедился, что нейросети - важная часть современного мира и сейчас самое время начать их изучать.\n\n🎁 А чтобы старт был легче, держи бонусные токены для <a href=\"https://neuro-texter.ru/\">НейроТекстера</a>.\n\nС ними ты сможешь создать курсовую, рекламный пост, стихотворение, картинку и много чего еще. <a href=\"https://neuro-texter.ru/\">👉Скорее переходи👈</a>";
 
         Log::info("Итоговое сообщение для пользователя сформировано: {$result}");
-        return "<strong>Твоё звание - {$result}</strong>\n\n" . "<strong>{$additionalMessage}</strong>";
+
+        return [
+            'title' => $titleMessage,
+            'additional' => "<strong>{$additionalMessage}</strong>"
+        ];
     }
 }
