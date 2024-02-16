@@ -42,7 +42,7 @@ class CallbackQueryService
         }
     }
 
-    // Обрабатывает данные обратного вызова от Telegram, связанные с викториной.
+    // Обрабатывает ответы пользователя, связанные с викториной.
     protected function processCallbackData(array $parts, int $chatId, CallbackQuery $callbackQuery): void
     {
         Log::info("Processing callback data", ['parts' => $parts, 'chatId' => $chatId]);
@@ -56,44 +56,49 @@ class CallbackQueryService
         $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
         Log::info("User fetched or created", ['userId' => $user->id]);
 
-        // Проверка правильности ответа
         $isCorrect = Question::find($currentQuestionId)
             ->answers()
             ->where('id', $currentAnswerId)
             ->where('is_correct', true)
             ->exists();
 
-        // Сохранение ответа пользователя
         $user->quizResponses()->create([
             'answer_id' => $currentAnswerId,
             'is_correct' => $isCorrect,
         ]);
 
-        // Формирование текста сообщения
-        $messageText = $isCorrect ? "✅ Верно!" : "❌ Неверно.";
+        $messageText = $isCorrect ? "✅ Верно!" . PHP_EOL . PHP_EOL : "❌ Неверно.\n";
 
-        // Получение объяснения текущего вопроса, если оно есть и ответ правильный
-        if ($isCorrect) {
-            $explanationText = $this->getCurrentQuestionExplanation($currentQuestionId);
-            if (!empty($explanationText)) {
-                $messageText .= "\n\n" . $explanationText; // Добавляем объяснение к сообщению
+        if (!$isCorrect) {
+            $correctAnswer = Question::find($currentQuestionId)
+                ->answers()
+                ->where('is_correct', true)
+                ->first();
+
+            if ($correctAnswer) {
+                $messageText .= PHP_EOL . "<strong>Правильный ответ: " . $correctAnswer->text . "</strong>\n\n";
+            } else {
+                $messageText .= "Не удалось найти правильный ответ.\n\n";
             }
         }
 
-        // Отправка сообщения пользователю
+        $explanationText = $this->getCurrentQuestionExplanation($currentQuestionId);
+        if (!empty($explanationText)) {
+            $messageText .= $explanationText;
+        }
+
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => $messageText,
             'parse_mode' => 'HTML',
         ]);
 
-        // Проверка и отправка следующего вопроса или завершение викторины
         if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
             $this->quizService->completeQuiz($user, $chatId);
         }
     }
 
-    // Обрабатывает правильный ответ пользователя, отправляя объяснение текущего вопроса и загружая следующий вопрос.
+    // Отправляет объяснение текущего вопроса и загружая следующий вопрос.
     public function getCurrentQuestionExplanation(int $currentQuestionId): ?string
     {
         $currentQuestion = Question::find($currentQuestionId);
