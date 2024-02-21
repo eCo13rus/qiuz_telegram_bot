@@ -23,7 +23,7 @@ class StartCommand extends Command
             Log::info('Начало обработки команды', ['command' => $this->getName()]);
 
             $this->replyWithChatAction(['action' => Actions::TYPING]);
-            $this->replyWithMessage(['text' => 'Привет! 🤗' . PHP_EOL . 'Это квиз-игра с нашим ботом. Чтобы продолжить, используй команду /quiz']);
+            $this->replyWithMessage(['text' => 'Привет! 🤗' . PHP_EOL . 'Это квиз-игра с нашим ботом. Чтобы продолжить, используйте команду /quiz']);
         } catch (TelegramResponseException $e) {
             if ($e->getCode() == 403) {
                 Log::error("Ошибка: бот был заблокирован пользователем. Исключение: {$e->getMessage()}");
