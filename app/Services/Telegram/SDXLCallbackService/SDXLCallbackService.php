@@ -83,14 +83,14 @@ class SDXLCallbackService
         // После успешной отправки изображения, отправляем результаты квиза
         if ($this->sendImageToTelegram($imageUrl, $chatId)) {
             // Предполагаем, что 7-й вопрос это вопрос, на который отвечается изображением
-            $user = User::where('telegram_id', $chatId)->first();
-            if ($user) {
-                $user->quizResponses()->create([
-                    'question_id' => 7,
-                    'is_image_response' => true,
-                    'is_correct' => true,
-                ]);
-            }
+            // $user = User::where('telegram_id', $chatId)->first();
+            // if ($user) {
+            //     $user->quizResponses()->create([
+            //         'question_id' => 7,
+            //         'is_image_response' => true,
+            //         'is_correct' => true,
+            //     ]);
+            // }
 
             $this->sendQuizResults($chatId);
         }
@@ -122,7 +122,6 @@ class SDXLCallbackService
         $user = User::where('telegram_id', $chatId)->first();
 
         if ($user) {
-            // Предполагается, что у вас есть сервис QuizService для обработки квизов
             $score = $this->quizService->calculateQuizResults($user);
             $resultMessages = $this->quizService->getResultMessage($score);
 

@@ -61,6 +61,18 @@ class CallbackQueryService
         $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
         Log::info("User fetched or created", ['userId' => $user->id]);
 
+        // Проверяем, отвечал ли пользователь уже на данный вопрос
+        $previousResponse = $user->quizResponses()->where('question_id', $currentQuestionId)->first();
+        if ($previousResponse) {
+            $messageText = "Вы уже дали ответ на этот вопрос. Пожалуйста, ответьте на текущий 🥸.";
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $messageText,
+                'parse_mode' => 'HTML',
+            ]);
+            return; // Прекращаем обработку текущего колбэка
+        }
+
         $isCorrect = Question::find($currentQuestionId)
             ->answers()
             ->where('id', $currentAnswerId)
@@ -68,6 +80,7 @@ class CallbackQueryService
             ->exists();
 
         $user->quizResponses()->create([
+            'question_id' => $currentQuestionId,
             'answer_id' => $currentAnswerId,
             'is_correct' => $isCorrect,
         ]);

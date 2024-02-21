@@ -164,7 +164,7 @@ class QuizService
                 $query->where('is_correct', true)
                     ->orWhere('is_image_response', true);
             })
-            ->count();
+            ->count() + 1;
         Log::info("Подсчет результатов квиза для пользователя {$user->id}. Правильных ответов: {$correctAnswersCount}");
 
         return $correctAnswersCount;
