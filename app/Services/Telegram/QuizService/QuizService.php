@@ -15,6 +15,7 @@ use App\Traits\ResultMessageTrait;
 class QuizService
 {
     use ResultMessageTrait;
+
     // Загружает следующий вопрос и если есть обновляет состояние пользователя
     public function sendNextQuestion(User $user, int $currentQuestionId, int $chatId): bool
     {
@@ -137,7 +138,7 @@ class QuizService
     {
         Log::info("Завершение квиза для пользователя {$user->id} в чате {$chatId}");
 
-        $messageText = view('telegram.quiz_completed_message')->render();
+        $messageText = view('telegram.quiz_completed')->render();
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
@@ -220,8 +221,6 @@ class QuizService
         } else {
             return $generalPicture->telegram_file_id; // Используем существующий telegram_file_id для отправки
         }
-
-        // Возвращаем null или ID запасного изображения, если не удалось загрузить основное изображение
         return null;
     }
 }

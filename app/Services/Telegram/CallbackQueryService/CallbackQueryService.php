@@ -24,6 +24,8 @@ class CallbackQueryService
     // Получаем информацию с кнопок(ответов пользователя)
     public function handleCallbackQuery(CallbackQuery $callbackQuery): void
     {
+        Log::info('Webhook hit', ['input' => request()->all()]);
+
         $callbackData = $callbackQuery->getData();
         $message = $callbackQuery->getMessage();
         $chatId = $message->getChat()->getId();

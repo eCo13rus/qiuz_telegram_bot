@@ -21,6 +21,7 @@ class QuizCommand extends Command
 
     public function handle()
     {
+        // Log::info('Начало обработки команды', ['command' => $this->getName()]);
         $this->replyWithChatAction(['action' => Actions::TYPING]);
 
         $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();

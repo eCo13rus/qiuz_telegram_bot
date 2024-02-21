@@ -28,7 +28,7 @@ class TelegramBotController extends Controller
     //Обрабатываем веб хук от телеграм
     public function processingWebhook(Request $request)
     {
-        //Log::info('Webhook update', ['update' => $request->all()]);
+        Log::info('Webhook update', ['update' => $request->all()]);
 
         $update = TelegramFacade::commandsHandler(true); // получаем объект от обновлений Телеграм, сразу обработанный
 
