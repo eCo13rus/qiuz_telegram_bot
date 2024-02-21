@@ -8,9 +8,12 @@ use Telegram\Bot\Objects\CallbackQuery;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use App\Services\Telegram\QuizService\QuizService;
+use App\Traits\ResultMessageTrait;
 
 class CallbackQueryService
 {
+    use ResultMessageTrait;
+
     protected $quizService;
 
     public function __construct(QuizService $quizService)
