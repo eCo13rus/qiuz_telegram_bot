@@ -34,7 +34,7 @@ return [
         'mybot' => [
             'token' => env('TELEGRAM_BOT_TOKEN', 'YOUR-BOT-TOKEN'),
             'certificate_path' => env('TELEGRAM_CERTIFICATE_PATH', 'YOUR-CERTIFICATE-PATH'),
-            'webhook_url' => env('TELEGRAM_WEBHOOK_URL', 'https://34d8dd2d8c34d590883501846f92900c.serveo.net/telegram-webhook'),
+            'webhook_url' => env('TELEGRAM_WEBHOOK_URL', 'https://lovely-crabs-tell.loca.lt/telegram-webhook'),
             'commands' => [
                 //Acme\Project\Commands\MyTelegramBot\BotCommand::class
                 App\Telegram\Commands\StartCommand::class,

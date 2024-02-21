@@ -6,9 +6,17 @@ use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use Telegram\Bot\FileUpload\InputFile;
 use Illuminate\Http\Request;
+use App\Services\Telegram\QuizService\QuizService;
+use App\Models\User;
 
 class SDXLCallbackService
 {
+    protected $quizService;
+
+    public function __construct(QuizService $quizService)
+    {
+        $this->quizService = $quizService;
+    }
     // Обрабатывает колбэк от SDXL API
     public function processDalleCallback(Request $request, $chatId)
     {
@@ -72,19 +80,73 @@ class SDXLCallbackService
 
         $imageUrl = $data['result'][0];
 
-        $this->sendImageToTelegram($imageUrl, $chatId);
+        // После успешной отправки изображения, отправляем результаты квиза
+        if ($this->sendImageToTelegram($imageUrl, $chatId)) {
+            $this->sendQuizResults($chatId);
+        }
     }
 
-
     // Отправляет изображение в чат Telegram
-    protected function sendImageToTelegram($imageUrl, $chatId)
+    protected function sendImageToTelegram($imageUrl, $chatId): bool
     {
         Log::info("Отправляем изображение в Telegram", ['imageUrl' => $imageUrl]);
-        // Создаем экземпляр InputFile из URL изображения
-        $photo = InputFile::create($imageUrl);
-        TelegramFacade::sendPhoto([
-            'chat_id' => $chatId,
-            'photo' => $photo,
-        ]);
+
+        try {
+            // Создаем экземпляр InputFile из URL изображения
+            $photo = InputFile::create($imageUrl);
+            TelegramFacade::sendPhoto([
+                'chat_id' => $chatId,
+                'photo' => $photo,
+            ]);
+
+            return true; // Изображение успешно отправлено
+        } catch (\Exception $e) {
+            Log::error("Ошибка при отправке изображения в Telegram", ['error' => $e->getMessage()]);
+            return false; // Ошибка при отправке изображения
+        }
+    }
+
+    // Отправляем результаты квиза пользователю
+    protected function sendQuizResults($chatId)
+    {
+        $user = User::where('telegram_id', $chatId)->first();
+
+        if ($user) {
+            // Предполагается, что у вас есть сервис QuizService для обработки квизов
+            $score = $this->quizService->calculateQuizResults($user);
+            $resultMessages = $this->quizService->getResultMessage($score);
+
+            $this->quizService->resetUserQuizResponses($user);
+
+            // Получаем telegramFileId для изображения, соответствующего результату
+            $telegramFileId = $this->quizService->fetchResultImage($score, $chatId);
+
+            // Отправляем звание
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $resultMessages['title'],
+                'parse_mode' => 'HTML',
+            ]);
+
+            // Если изображение найдено, отправляем его к званию
+            if ($telegramFileId) {
+                TelegramFacade::sendPhoto([
+                    'chat_id' => $chatId,
+                    'photo' => $telegramFileId,
+                ]);
+            }
+
+            // Отправляем правильные ответы и дополнительную информацию.
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $resultMessages['additional'],
+                'parse_mode' => 'HTML',
+            ]);
+
+            // Сброс состояния пользователя после отправки результатов
+            $user->state()->update(['state' => 'initial_state']);
+            
+            Log::info('сброс состояния', ['user' => $user]);
+        }
     }
 }

@@ -5,7 +5,7 @@ namespace App\Traits;
 trait ResultMessageTrait
 {
     // Выводит финольное сообщение с информацией
-    protected function getResultMessage(int $score): array
+    public function getResultMessage(int $score): array
     {
         if ($score <= 2) {
             $result = '🤓 Ученик.';

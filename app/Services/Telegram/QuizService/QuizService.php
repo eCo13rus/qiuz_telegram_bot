@@ -138,51 +138,21 @@ class QuizService
     {
         Log::info("Завершение квиза для пользователя {$user->id} в чате {$chatId}");
 
+        // Отправляем пользователю сообщение о завершении квиза
         $messageText = view('telegram.quiz_completed')->render();
-
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => $messageText,
             'parse_mode' => 'HTML',
         ]);
 
-        $score = $this->calculateQuizResults($user);
-
-        // Отправка результата квиза и фото звания
-        $resultMessages = $this->getResultMessage($score);
-
-        // Отправляем текст с званием
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $resultMessages['title'],
-            'parse_mode' => 'HTML',
-        ]);
-
-        // Отправляем фото, соответствующее званию
-        $telegramFileId = $this->fetchResultImage($score, $chatId);
-        if ($telegramFileId) {
-            TelegramFacade::sendPhoto([
-                'chat_id' => $chatId,
-                'photo' => $telegramFileId,
-            ]);
-        }
-
-        // Отправляем дополнительное сообщение
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $resultMessages['additional'],
-            'parse_mode' => 'HTML',
-        ]);
-
-        // Сбрасываем предыдущие ответы
-        $this->resetUserQuizResponses($user);
-
+        // Обновляем состояние пользователя, указывая, что квиз завершен
         UserState::updateOrCreate(
             ['user_id' => $user->id],
             ['state' => 'quiz_completed', 'current_question_id' => null]
         );
 
-        Log::info("Квиз завершен для пользователя {$user->id}");
+        Log::info("Квиз завершен для пользователя {$user->id}, ожидание запроса на генерацию изображения.");
     }
 
     //  Считает колличество правильных ответов
@@ -198,7 +168,7 @@ class QuizService
     }
 
     // Определяет звание пользователя и выдает соответствующее изображение
-    protected function fetchResultImage(int $score, $chatId)
+    public function fetchResultImage(int $score, $chatId)
     {
         if ($score <= 2) {
             $imagePath = 'questions/photo6.jpeg'; // Для звания "Ученик"
