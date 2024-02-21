@@ -20,6 +20,8 @@ class StartCommand extends Command
     public function handle()
     {
         try {
+            Log::info('Начало обработки команды', ['command' => $this->getName()]);
+
             $this->replyWithChatAction(['action' => Actions::TYPING]);
             $this->replyWithMessage(['text' => 'Привет! 🤗' . PHP_EOL . 'Это квиз-игра с нашим ботом. Чтобы продолжить, используй команду /quiz']);
         } catch (TelegramResponseException $e) {

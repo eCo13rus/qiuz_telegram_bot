@@ -7,6 +7,7 @@ use App\Models\Question;
 use App\Models\Answer;
 use App\Models\Picture;
 use Illuminate\Support\Facades\DB;
+use App\Models\GeneralPicture;
 
 class QuizTableSeeder extends Seeder
 {
@@ -109,6 +110,18 @@ class QuizTableSeeder extends Seeder
                 'explanation' => 'В 1943 году Американские ученые Уоррен Мак-Каллок и Уолтер Питтс представили миру модель под названием «логический нейрон». С помощью математики она имитировала функционирование нейронов в головном мозге.'
             ],
         ];
+
+        // $generalPicturesData = [
+        //     ['path' => 'questions/photo4.jpeg'],
+        //     ['path' => 'questions/photo5.jpeg'],
+        //     ['path' => 'questions/photo6.jpeg'],
+        // ];
+
+        // foreach ($generalPicturesData as $generalPicture) {
+        //     GeneralPicture::firstOrCreate([
+        //         'path' => $generalPicture['path']
+        //     ]);
+        // }
 
         foreach ($data as $item) {
             // Создание вопроса с дополнительным ключом explanation

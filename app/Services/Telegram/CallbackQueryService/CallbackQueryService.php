@@ -21,6 +21,8 @@ class CallbackQueryService
     // Получаем информацию с кнопок(ответов пользователя)
     public function handleCallbackQuery(CallbackQuery $callbackQuery): void
     {
+        Log::info('Webhook hit', ['input' => request()->all()]);
+
         $callbackData = $callbackQuery->getData();
         $message = $callbackQuery->getMessage();
         $chatId = $message->getChat()->getId();
@@ -107,5 +109,27 @@ class CallbackQueryService
             return '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation) . '</em>';
         }
         return null;
+    }
+
+    // Выводит финольное сообщение с информацией
+    public function getResultMessage(int $score): array
+    {
+        if ($score <= 2) {
+            $result = '🤓 Ученик.';
+        } elseif ($score <= 5) {
+            $result = '😏 Уверенный юзер.';
+        } else {
+            $result = '😎 Всевидящее око.';
+        }
+
+        $titleMessage = "<strong>Твоё звание: $result</strong>\n\n";
+        $additionalMessage = "Правильные ответы: $score<strong>\n\n😳 Неожиданные результаты, верно?</strong>" . "\n\nТеперь ты точно убедился, что нейросети - важная часть современного мира и сейчас самое время начать их изучать.\n\n🎁 А чтобы старт был легче, держи бонусные токены для <a href=\"https://neuro-texter.ru/\">НейроТекстера</a>.\n\nС ними ты сможешь создать курсовую, рекламный пост, стихотворение, картинку и много чего еще. <a href=\"https://neuro-texter.ru/\">👉Скорее переходи👈</a>";
+
+        Log::info("Итоговое сообщение для пользователя сформировано: $result");
+
+        return [
+            'title' => $titleMessage,
+            'additional' => "<strong>$additionalMessage</strong>"
+        ];
     }
 }
