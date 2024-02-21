@@ -160,7 +160,10 @@ class QuizService
     {
         // Получаем количество правильных ответов, выбранных пользователем
         $correctAnswersCount = $user->quizResponses()
-            ->where('is_correct', true)
+            ->where(function ($query) {
+                $query->where('is_correct', true)
+                    ->orWhere('is_image_response', true);
+            })
             ->count();
         Log::info("Подсчет результатов квиза для пользователя {$user->id}. Правильных ответов: {$correctAnswersCount}");
 

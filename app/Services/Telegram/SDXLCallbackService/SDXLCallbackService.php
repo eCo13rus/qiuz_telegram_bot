@@ -82,6 +82,16 @@ class SDXLCallbackService
 
         // После успешной отправки изображения, отправляем результаты квиза
         if ($this->sendImageToTelegram($imageUrl, $chatId)) {
+            // Предполагаем, что 7-й вопрос это вопрос, на который отвечается изображением
+            $user = User::where('telegram_id', $chatId)->first();
+            if ($user) {
+                $user->quizResponses()->create([
+                    'question_id' => 7,
+                    'is_image_response' => true,
+                    'is_correct' => true,
+                ]);
+            }
+
             $this->sendQuizResults($chatId);
         }
     }
@@ -145,7 +155,7 @@ class SDXLCallbackService
 
             // Сброс состояния пользователя после отправки результатов
             $user->state()->update(['state' => 'initial_state']);
-            
+
             Log::info('сброс состояния', ['user' => $user]);
         }
     }
