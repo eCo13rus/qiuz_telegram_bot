@@ -47,46 +47,70 @@ class CallbackQueryService
         }
     }
 
-    // Обрабатывает ответы пользователя, связанные с викториной.
+    // Обрабатывает ответы пользователя и проверяет отвечал ли он уже на вопросы связанные с викториной.
     protected function processCallbackData(array $parts, int $chatId, CallbackQuery $callbackQuery): void
     {
-        Log::info("Processing callback data", ['parts' => $parts, 'chatId' => $chatId]);
+        Log::info("Начало обработки callback данных", ['parts' => $parts, 'chatId' => $chatId]);
 
+        // Извлечение данных пользователя и вопроса из callback-запроса
         $telegramUserId = $callbackQuery->getFrom()->getId();
+        $currentQuestionId = (int) $parts[1];
+
+        Log::debug("Детали callback данных", ['telegramUserId' => $telegramUserId, 'currentQuestionId' => $currentQuestionId]);
+
+        // Получение или создание записи пользователя в базе данных
+        $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
+        Log::info("Пользователь получен или создан", ['userId' => $user->id]);
+
+        // Проверка, отвечал ли пользователь на вопрос ранее
+        if ($this->hasUserAlreadyResponded($user, $currentQuestionId, $chatId)) {
+            return; // Если да, прекращаем дальнейшую обработку
+        }
+
+        // Переход к обработке ответа пользователя
+        $this->handleUserResponse($parts, $user, $chatId);
+    }
+
+    // Обрабатывает ответ пользователя, сохраняет его и отправляет следующий вопрос или завершает викторину.
+    protected function handleUserResponse(array $parts, User $user, int $chatId): void
+    {
         $currentQuestionId = (int) $parts[1];
         $currentAnswerId = (int) $parts[3];
 
-        Log::debug("Callback data details", ['telegramUserId' => $telegramUserId, 'currentQuestionId' => $currentQuestionId, 'currentAnswerId' => $currentAnswerId]);
-
-        $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
-        Log::info("User fetched or created", ['userId' => $user->id]);
-
-        // Проверяем, отвечал ли пользователь уже на данный вопрос
-        $previousResponse = $user->quizResponses()->where('question_id', $currentQuestionId)->first();
-        if ($previousResponse) {
-            $messageText = "Вы уже дали ответ на этот вопрос. Пожалуйста, ответьте на текущий 🥸.";
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => $messageText,
-                'parse_mode' => 'HTML',
-            ]);
-            return; // Прекращаем обработку текущего колбэка
-        }
-
+        // Проверка правильности ответа пользователя
         $isCorrect = Question::find($currentQuestionId)
             ->answers()
             ->where('id', $currentAnswerId)
             ->where('is_correct', true)
             ->exists();
 
+        // Сохранение ответа пользователя
         $user->quizResponses()->create([
             'question_id' => $currentQuestionId,
             'answer_id' => $currentAnswerId,
             'is_correct' => $isCorrect,
         ]);
 
-        $messageText = $isCorrect ? "✅ Верно!" . PHP_EOL . PHP_EOL : "❌ Неверно.\n";
+        // Формирование текста сообщения в зависимости от правильности ответа
+        $messageText = $this->generateResponseMessage($isCorrect, $currentQuestionId);
 
+        // Отправка сообщения пользователю
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $messageText,
+            'parse_mode' => 'HTML',
+        ]);
+
+        // Отправка следующего вопроса или завершение викторины
+        if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
+            $this->quizService->completeQuiz($user, $chatId);
+        }
+    }
+
+    // Выводим сообщение в зависимости от правильности ответа и наличия объяснения.
+    protected function generateResponseMessage(bool $isCorrect, int $currentQuestionId): string
+    {
+        $messageText = $isCorrect ? "✅ Верно!" . PHP_EOL . PHP_EOL : "❌ Неверно.\n";
         if (!$isCorrect) {
             $correctAnswer = Question::find($currentQuestionId)
                 ->answers()
@@ -100,20 +124,29 @@ class CallbackQueryService
             }
         }
 
+        // Добавление объяснения к ответу, если оно есть
         $explanationText = $this->getCurrentQuestionExplanation($currentQuestionId);
         if (!empty($explanationText)) {
             $messageText .= $explanationText;
         }
 
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $messageText,
-            'parse_mode' => 'HTML',
-        ]);
+        return $messageText;
+    }
 
-        if (!$this->quizService->sendNextQuestion($user, $currentQuestionId, $chatId)) {
-            $this->quizService->completeQuiz($user, $chatId);
+    // Проверяет, отвечал ли пользователь уже на вопрос.
+    protected function hasUserAlreadyResponded(User $user, int $currentQuestionId, int $chatId): bool
+    {
+        $previousResponse = $user->quizResponses()->where('question_id', $currentQuestionId)->first();
+        if ($previousResponse) {
+            $messageText = "Вы уже дали ответ на этот вопрос. Пожалуйста, ответьте на текущий 🥸.";
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $messageText,
+                'parse_mode' => 'HTML',
+            ]);
+            return true;
         }
+        return false;
     }
 
     // Отправляет объяснение текущего вопроса и загружая следующий вопрос.

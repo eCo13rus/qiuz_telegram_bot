@@ -81,19 +81,10 @@ class SDXLCallbackService
         $imageUrl = $data['result'][0];
 
         // После успешной отправки изображения, отправляем результаты квиза
-        if ($this->sendImageToTelegram($imageUrl, $chatId)) {
-            // Предполагаем, что 7-й вопрос это вопрос, на который отвечается изображением
-            // $user = User::where('telegram_id', $chatId)->first();
-            // if ($user) {
-            //     $user->quizResponses()->create([
-            //         'question_id' => 7,
-            //         'is_image_response' => true,
-            //         'is_correct' => true,
-            //     ]);
-            // }
+        $this->sendImageToTelegram($imageUrl, $chatId);
 
-            $this->sendQuizResults($chatId);
-        }
+        // И выводим результаты
+        $this->sendQuizResults($chatId);
     }
 
     // Отправляет изображение в чат Telegram
@@ -125,7 +116,7 @@ class SDXLCallbackService
             $score = $this->quizService->calculateQuizResults($user);
             $resultMessages = $this->quizService->getResultMessage($score);
 
-            $this->quizService->resetUserQuizResponses($user);
+            //$this->quizService->resetUserQuizResponses($user);
 
             // Получаем telegramFileId для изображения, соответствующего результату
             $telegramFileId = $this->quizService->fetchResultImage($score, $chatId);
@@ -143,6 +134,12 @@ class SDXLCallbackService
                     'chat_id' => $chatId,
                     'photo' => $telegramFileId,
                 ]);
+
+                // После отправки результатов квиза и изображения обновляем столбец image_generated
+                $user->state()->update(['state' => 'image_generated']);
+
+                // Устанавливаем флаг `image_generated` для всех ответов пользователя на квиз
+                $user->quizResponses()->update(['image_generated' => true]);
             }
 
             // Отправляем правильные ответы и дополнительную информацию.
@@ -151,11 +148,6 @@ class SDXLCallbackService
                 'text' => $resultMessages['additional'],
                 'parse_mode' => 'HTML',
             ]);
-
-            // Сброс состояния пользователя после отправки результатов
-            $user->state()->update(['state' => 'initial_state']);
-
-            Log::info('сброс состояния', ['user' => $user]);
         }
     }
 }

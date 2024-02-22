@@ -3,7 +3,6 @@
 namespace App\Services\Telegram\SDXLMessageService;
 
 use App\Models\User;
-use App\Models\UserState;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use App\Providers\SDXLService;
@@ -43,7 +42,13 @@ class SDXLMessageService
 
                 $userState = $user->state()->first();
 
-                if (is_null($userState) || $userState->state !== 'quiz_completed') {
+                if ($userState && $userState->state === 'image_generated') {
+                    TelegramFacade::sendMessage([
+                        'chat_id' => $chatId,
+                        'text' => 'Вы уже делали запрос на генерацию изображения 🙄.',
+                        'parse_mode' => 'HTML',
+                    ]);
+                } elseif (is_null($userState) || $userState->state !== 'quiz_completed') {
                     Log::warning('Не закончил квиз', ['userId' => $userId]);
                     TelegramFacade::sendMessage([
                         'chat_id' => $chatId,
