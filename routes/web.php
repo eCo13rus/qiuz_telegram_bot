@@ -26,3 +26,7 @@ Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebho
 Route::get('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
 
 Route::post('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
+
+Route::get('/channel-response', [SDXLCallbackService::class, 'handleChannelBotResponse']);
+
+Route::post('/channel-response', [SDXLCallbackService::class, 'haдndleChannelBotResponse']);
