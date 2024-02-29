@@ -101,13 +101,13 @@ class SDXLCallbackService
     {
         $keyboard = [
             'inline_keyboard' => [
-                [['text' => 'Вау, круто, что дальше?', 'callback_data' => 'show_quiz_results']]
+                [['text' => 'Вау, круто, что дальше?🤔', 'callback_data' => 'show_quiz_results']]
             ]
         ];
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => 'Ну как, понравилось?',
+            'text' => 'Ну как, понравилось?😜',
             'reply_markup' => json_encode($keyboard)
         ]);
     }
