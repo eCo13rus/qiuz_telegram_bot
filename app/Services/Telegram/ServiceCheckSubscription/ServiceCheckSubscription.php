@@ -12,12 +12,6 @@ use App\Traits\ResultMessageTrait;
 class ServiceCheckSubscription
 {
     use ResultMessageTrait;
-    // // Передаем пользователя как параметр
-    public function generateDeepLink($telegramUserId): string
-    {
-        $channelName = env('TG_KANAL');
-        return "https://t.me/{$channelName}?start={$telegramUserId}";
-    }
 
     // Запрос к боту который в канале на наличие подписки юзера
     public function checkUserSubscription(int $userId): bool
