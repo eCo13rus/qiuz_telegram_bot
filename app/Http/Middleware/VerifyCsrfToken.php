@@ -14,5 +14,7 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         '/telegram-webhook',
         'dalle-callback/*',
+        '/process-callback',
+        '/redirect/{userId}',
     ];
 }

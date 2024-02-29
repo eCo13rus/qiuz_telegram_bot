@@ -91,13 +91,16 @@ class SDXLMessageService
     }
 
     //В конце квиза юзер вводит сообщение в SDXL на генерацию изображения,отправляем запрос и возвращаем ответ пользователю.
-    protected function requestSDXL(int $chat_id, string $messageText): void
+    protected function requestSDXL(int $chatId, string $messageText): void
     {
-        $responseText = $this->sdxlService->handleRequest($messageText, $chat_id);
+        Log::info('Запрос SDXL на генерацию изображения', ['chatId' => $chatId, 'messageText' => $messageText]);
+        $response = $this->sdxlService->handleRequest($messageText, $chatId);
 
-        TelegramFacade::sendMessage([
-            'chat_id' => $chat_id,
-            'text' => $responseText
-        ]);
+        if (isset($response['text'])) {
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $response['text']
+            ]);
+        }
     }
 }

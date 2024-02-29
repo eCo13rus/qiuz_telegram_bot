@@ -5,6 +5,9 @@ namespace App\Providers;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
+use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
+use App\Models\UserState;
+use App\Models\User;
 
 class SDXLService
 {
@@ -128,16 +131,52 @@ class SDXLService
         }
     }
 
-    public function handleRequest(string $prompt, int $chatId): string
+    // Обрабатывает запрос на генерацию, сохраняет айди сообщения 'text' чтобы после удалить
+    public function handleRequest(string $prompt, int $chatId): array
     {
+        Log::info('Обрабатываем запрос на генерацию изображения', ['prompt' => $prompt, 'chatId' => $chatId]);
         $response = $this->queryDalleApi($prompt, $chatId);
 
         if (isset($response['request_id'])) {
-            // Возвращаем сообщение о том, что запрос на генерацию принят и находится в обработке
-            return "Ваш запрос на генерацию изображения принят и находится в обработке⌛️. Мы отправим вам фото, как только оно будет готово.";
+            $messageResponse = TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => "Ваш запрос на генерацию изображения принят и находится в обработке⌛️. Мы отправим вам фото, как только оно будет готово."
+            ]);
+
+            Log::info('Отправлено сообщение об обработке запроса', ['messageResponse' => $messageResponse]);
+
+            // Получение user_id пользователя
+            $user = User::where('telegram_id', $chatId)->first();
+            if ($user) {
+                $userState = UserState::firstOrCreate(
+                    ['user_id' => $user->id],
+                    ['state' => 'initial_state'],
+                );
+
+                // Сохраняем message_id в базе данных
+                $userState->processing_message_id = $messageResponse['message_id'];
+                $userState->save();
+            }
+
+            return [
+                'message_id' => $messageResponse['message_id'],
+                'chat_id' => $chatId,
+            ];
         } else {
-            // Возвращаем сообщение об ошибке, если запрос на генерацию не был успешно обработан
-            return "Извините, произошла ошибка при обработке вашего запроса на генерацию изображения.";
+            Log::error('Ошибка при обработке запроса на генерацию изображения', ['response' => $response]);
+            return [
+                'error' => "Извините, произошла ошибка при обработке вашего запроса на генерацию изображения."
+            ];
         }
+    }
+
+    // Метод удаления текста запроса из чата
+    public function deleteProcessingMessage(int $chatId, int $messageId)
+    {
+        Log::info('Удаление сообщения об обработке', ['chatId' => $chatId, 'messageId' => $messageId]);
+        TelegramFacade::deleteMessage([
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ]);
     }
 }

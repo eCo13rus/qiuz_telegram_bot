@@ -13,6 +13,7 @@ class UserState extends Model
         'user_id',
         'state',
         'current_question_id',
+        'processing_message_id',
     ];
 
     public function user()

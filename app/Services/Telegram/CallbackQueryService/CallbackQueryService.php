@@ -9,33 +9,43 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use App\Services\Telegram\QuizService\QuizService;
 use App\Traits\ResultMessageTrait;
+use App\Services\Telegram\SDXLCallbackService\SDXLCallbackService;
+
 
 class CallbackQueryService
 {
     use ResultMessageTrait;
 
     protected $quizService;
+    protected $sdxlCallbackService;
 
-    public function __construct(QuizService $quizService)
+    public function __construct(QuizService $quizService, SDXLCallbackService $sdxlCallbackService)
     {
         $this->quizService = $quizService;
+        $this->sdxlCallbackService = $sdxlCallbackService;
     }
 
     // Получаем информацию с кнопок(ответов пользователя)
     public function handleCallbackQuery(CallbackQuery $callbackQuery): void
     {
-        Log::info('Webhook hit', ['input' => request()->all()]);
+        Log::info('Вебхук с кнопок в handleCallbackQuery', ['input' => request()->all()]);
 
         $callbackData = $callbackQuery->getData();
         $message = $callbackQuery->getMessage();
         $chatId = $message->getChat()->getId();
 
-        Log::info("Handling callback query", ['callbackData' => $callbackData, 'chatId' => $chatId]);
+        Log::info("Обработка запроса обратного вызова", ['callbackData' => $callbackData, 'chatId' => $chatId]);
 
         try {
-            $parts = explode('_', $callbackData);
-            if (count($parts) === 4 && $parts[0] === 'question') {
-                $this->processCallbackData($parts, $chatId, $callbackQuery);
+            // Проверка callback_data для кнопки "Вау, круто, что дальше?"
+            if ($callbackData === 'show_quiz_results') {
+                // Здесь вызов метода, который отправляет результаты квиза
+                $this->sdxlCallbackService->sendQuizResults($chatId);
+            } else {
+                $parts = explode('_', $callbackData);
+                if (count($parts) === 4 && $parts[0] === 'question') {
+                    $this->processCallbackData($parts, $chatId, $callbackQuery);
+                }
             }
 
             TelegramFacade::answerCallbackQuery([

@@ -80,7 +80,6 @@ class QuizService
         if ($mediaGroup->isNotEmpty()) {
             if ($allImagesHaveIds) {
                 // Если все картинки уже загружены на сервера Telegram и имеют ID
-                // Отправляем группу изображений.
                 TelegramFacade::sendMediaGroup([
                     'chat_id' => $chatId,
                     'media' => $mediaGroup->toJson(),
@@ -140,8 +139,10 @@ class QuizService
 
         // Отправляем пользователю сообщение о завершении квиза
         $messageText = view('telegram.quiz_completed')->render();
+        
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
+            'disable_web_page_preview' => true,
             'text' => $messageText,
             'parse_mode' => 'HTML',
         ]);

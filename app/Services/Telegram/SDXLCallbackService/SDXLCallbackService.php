@@ -8,14 +8,23 @@ use Telegram\Bot\FileUpload\InputFile;
 use Illuminate\Http\Request;
 use App\Services\Telegram\QuizService\QuizService;
 use App\Models\User;
+use App\Providers\SDXLService;
+use App\Services\Telegram\ServiceCheckSubscription\ServiceCheckSubscription;
+use App\Models\UserState;
 
 class SDXLCallbackService
 {
+    public const TOTAL_QUESTIONS = 7;
     protected $quizService;
+    protected $serviceCheckSubscription;
+    protected $sdxlService;
 
-    public function __construct(QuizService $quizService)
+
+    public function __construct(QuizService $quizService, ServiceCheckSubscription $serviceCheckSubscription, SDXLService $sdxlService)
     {
         $this->quizService = $quizService;
+        $this->serviceCheckSubscription = $serviceCheckSubscription;
+        $this->sdxlService = $sdxlService;
     }
     // Обрабатывает колбэк от SDXL API
     public function processDalleCallback(Request $request, $chatId)
@@ -64,7 +73,7 @@ class SDXLCallbackService
     }
 
     // Обрабатывает статус 'success' колбэка от SDXL API
-    protected function handleSuccessStatus($data, $chatId)
+    protected function handleSuccessStatus($data, $chatId, $processingMessageId = null)
     {
         Log::info("Запрос успешно обработан", ['data' => $data]);
 
@@ -80,18 +89,34 @@ class SDXLCallbackService
 
         $imageUrl = $data['result'][0];
 
-        // После успешной отправки изображения, отправляем результаты квиза
-        $this->sendImageToTelegram($imageUrl, $chatId);
+        // Отправляем изображение
+        $this->sendImageToTelegram($imageUrl, $chatId, $processingMessageId);
 
-        // И выводим результаты
-        $this->sendQuizResults($chatId);
+        // Выводим кнопку "Вау круто а что дальше?"
+        $this->sendNextStepButton($chatId);
     }
 
-    // Отправляет изображение в чат Telegram
-    protected function sendImageToTelegram($imageUrl, $chatId): bool
+    // Добавляем после отправки изображения в методе handleSuccessStatus
+    protected function sendNextStepButton($chatId)
+    {
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => 'Вау, круто, что дальше?', 'callback_data' => 'show_quiz_results']]
+            ]
+        ];
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => 'Ну как, понравилось?',
+            'reply_markup' => json_encode($keyboard)
+        ]);
+    }
+
+
+    // Отправляет сгенерированное изображение в чат Telegram и удаляет сообщение об обработке
+    protected function sendImageToTelegram($imageUrl, $chatId, $processingMessageId = null): bool
     {
         Log::info("Отправляем изображение в Telegram", ['imageUrl' => $imageUrl]);
-
         try {
             // Создаем экземпляр InputFile из URL изображения
             $photo = InputFile::create($imageUrl);
@@ -99,6 +124,27 @@ class SDXLCallbackService
                 'chat_id' => $chatId,
                 'photo' => $photo,
             ]);
+
+            // Сначала находим пользователя по telegram_id
+            $user = User::where('telegram_id', $chatId)->first();
+            if ($user) {
+                // Затем получаем состояние пользователя по его внутреннему user_id
+                $userState = UserState::where('user_id', $user->id)->first();
+                if ($userState) {
+                    // Проверяем, есть ли сохраненный processing_message_id
+                    $messageIdToDelete = $processingMessageId ?? $userState->processing_message_id;
+
+                    Log::info('processingMessageId', ['processingMessageId' => $processingMessageId]);
+
+                    // Если изображение успешно отправлено и существует ID сообщения для удаления, удаляем сообщение об обработке
+                    if ($messageIdToDelete) {
+                        $this->sdxlService->deleteProcessingMessage($chatId, $messageIdToDelete);
+                        // Очищаем поле после использования
+                        $userState->processing_message_id = null;
+                        $userState->save();
+                    }
+                }
+            }
 
             return true; // Изображение успешно отправлено
         } catch (\Exception $e) {
@@ -108,29 +154,26 @@ class SDXLCallbackService
     }
 
     // Отправляем результаты квиза пользователю
-    protected function sendQuizResults($chatId)
+    public function sendQuizResults($chatId)
     {
         $user = User::where('telegram_id', $chatId)->first();
 
         if ($user) {
             $score = $this->quizService->calculateQuizResults($user);
-            $resultMessages = $this->quizService->getResultMessage($score);
+
+            $totalQuestions = SDXLCallbackService::TOTAL_QUESTIONS;
+            $resultMessages = $this->quizService->getResultMessage($score, $totalQuestions);
 
             // Получаем telegramFileId для изображения, соответствующего результату
             $telegramFileId = $this->quizService->fetchResultImage($score, $chatId);
-
-            // Отправляем звание
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => $resultMessages['title'],
-                'parse_mode' => 'HTML',
-            ]);
 
             // Если изображение найдено, отправляем его к званию
             if ($telegramFileId) {
                 TelegramFacade::sendPhoto([
                     'chat_id' => $chatId,
                     'photo' => $telegramFileId,
+                    'caption' => $resultMessages['title'], 
+                    'parse_mode' => 'HTML',
                 ]);
 
                 // После отправки результатов квиза и изображения обновляем столбец image_generated
@@ -141,70 +184,42 @@ class SDXLCallbackService
             }
 
             // Отправляем правильные ответы и дополнительную информацию.
+            $fullMessageText = $resultMessages['additional'] . "\n\nПодробнее о НейроТекстере:";
+
+            $buttonUrlForNeuroTexter = route('neurotexter.redirect', ['userId' => $user->telegram_id]);
+
+            // Отправляем объединенное сообщение с кнопкой
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
-                'text' => $resultMessages['additional'],
+                'text' => $fullMessageText,
+                'disable_web_page_preview' => true,
                 'parse_mode' => 'HTML',
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [[
+                            'text' => '👉 Скорее переходи 👈',
+                            'url' => $buttonUrlForNeuroTexter,
+                        ]]
+                    ]
+                ])
             ]);
 
-            $deepLink = $this->generateDeepLink($user->telegram_id);
-            Log::info('id', ['id' => $deepLink]);
+            $message = "⛔️ Погоди! На этом приятные сюрпризы не кончаются!\n\nПодпишись на наш канал и подскажем тебе ещё один супер-полезный сервиc";
 
-            // Отправка сообщения с призывом к действию
+            // Отправляем сообщение с кнопками для подтверждения подписки
             TelegramFacade::sendMessage([
                 'chat_id' => $chatId,
-                'text' => "🚀 Хочешь получить больше полезного контента? Подпишись на наш <a href=\"{$deepLink}\">канал</a>",
+                'text' => $message,
                 'parse_mode' => 'HTML',
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [
                         [
-                            ['text' => '🔔 Перейти на канал', 'url' => $deepLink],
-                            ['text' => '✅ Я уже подписался', 'callback_data' => 'subscribed_' . $user->id],
+                            ['text' => '🔔 Перейти на канал', 'url' => env('TG_CHANNEL')],
+                            ['text' => '✅ Я уже подписался', 'callback_data' => 'subscribed_' . $user->telegram_id],
                         ]
                     ]
                 ]),
             ]);
         }
-    }
-
-    // Передаем пользователя как параметр
-    public function generateDeepLink($telegramUserId): string
-    {
-        return getenv('TG_KANAL') . "?start={$telegramUserId}";
-    }
-
-    //Обработка ответа от бота из канала
-    //Обработка ответа от бота из канала
-    public function handleChannelBotResponse(Request $request)
-    {
-        Log::info('Полученный запрос в handleChannelBotResponse', ['data' => $request->all()]);
-
-        $callbackData = $request->input('data');
-        $chatId = $request->input('chatId');
-
-        Log::info('Извлечение данных запроса', ['callbackData' => $callbackData, 'chatId' => $chatId]);
-
-        if ($callbackData === 'subscribed_1') {
-            Log::info('Проверка подписки: true', ['chatId' => $chatId]);
-
-            try {
-                $user = User::where('telegram_id', $chatId)->firstOrFail();
-                Log::info('Пользователь найден', ['userId' => $user->id]);
-
-                $user->is_subscribed = 1; // Возможно, способ обновления атрибута не срабатывает корректно. Попробуйте установить значение явно.
-
-                if ($user->save()) {
-                    Log::info('Статус подписки успешно обновлён', ['userId' => $user->id]);
-                } else {
-                    Log::error('Ошибка: save() был вызван, но статус подписки не обновлен', ['userId' => $user->id]);
-                }
-            } catch (\Exception $e) {
-                Log::error('Ошибка при работе с базой данных', ['exception' => $e->getMessage()]);
-            }
-        } else {
-            Log::info('callbackData не соответствует ожидаемому значению', ['callbackData' => $callbackData]);
-        }
-
-        return response()->json(['success' => true]);
     }
 }

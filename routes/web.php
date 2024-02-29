@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Services\Telegram\SDXLCallbackService\SDXLCallbackService;
 use App\Http\Controllers\TelegramBotController;
+use App\Http\Controllers\RedirectController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,14 +20,18 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
+Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhook'])->name('processingWebhook');
 
-Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
+Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook'])->name('processingWebhook');
 
 Route::get('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
 
 Route::post('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processDalleCallback'])->name('dalle.callback');
 
-Route::get('/channel-response', [SDXLCallbackService::class, 'handleChannelBotResponse']);
+Route::get('/process-callback', [TelegramBotController::class, 'processCallback'])->name('processCallback');
 
-Route::post('/channel-response', [SDXLCallbackService::class, 'haдndleChannelBotResponse']);
+Route::post('/process-callback', [TelegramBotController::class, 'processCallback'])->name('processCallback');
+
+Route::get('/redirect/{userId}', [RedirectController::class, 'handleRedirect'])->name('neuroholst.redirect');
+
+Route::get('/neurotexter-redirect/{userId}', [RedirectController::class, 'handleNeurotexterRedirect'])->name('neurotexter.redirect');
