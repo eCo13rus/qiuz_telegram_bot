@@ -51,7 +51,7 @@ class TelegramBotController extends Controller
         return response()->json(['status' => 'Ok']);
     }
 
-    // Веб от кнопки подписки
+    // Веб хук от кнопки подписки
     public function processCallback(Request $request)
     {
         Log::info('Обработка callback в контроллере', ['input' => $request->all()]);
@@ -63,8 +63,6 @@ class TelegramBotController extends Controller
         if ($callbackQuery) {
             $this->serviceCheckSubscription->handleSubscriptionCallback($callbackQuery);
         }
-
-        return response()->json(['status' => 'success']);
     }
 
     // Обработка callback-запросов

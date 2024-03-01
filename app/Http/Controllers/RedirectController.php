@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class RedirectController extends Controller
 {
+    // Метод чекает переход пользователя на neuro-holst.ru и сохраняет в базе
     public function handleRedirect(Request $request, $userId)
     {
         Log::info('Перенаправление пользователя', ['userId' => $userId, 'requestData' => $request->all()]);
@@ -25,6 +26,7 @@ class RedirectController extends Controller
         }
     }
 
+    // Метод чекает переход пользователя на neuro-texter.ru и сохраняет в базе
     public function handleNeurotexterRedirect(Request $request, $userId)
     {
         Log::info('Перенаправление пользователя', ['userId' => $userId, 'requestData' => $request->all()]);

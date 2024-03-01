@@ -11,7 +11,6 @@ use App\Services\Telegram\QuizService\QuizService;
 use App\Traits\ResultMessageTrait;
 use App\Services\Telegram\SDXLCallbackService\SDXLCallbackService;
 
-
 class CallbackQueryService
 {
     use ResultMessageTrait;
@@ -39,7 +38,7 @@ class CallbackQueryService
         try {
             // Проверка callback_data для кнопки "Вау, круто, что дальше?"
             if ($callbackData === 'show_quiz_results') {
-                // Здесь вызов метода, который отправляет результаты квиза
+                // Вызов метода, который отправляет результаты квиза
                 $this->sdxlCallbackService->sendQuizResults($chatId);
             } else {
                 $parts = explode('_', $callbackData);
@@ -52,8 +51,7 @@ class CallbackQueryService
                 'callback_query_id' => $callbackQuery->getId(),
             ]);
         } catch (\Telegram\Bot\Exceptions\TelegramResponseException $e) {
-            Log::error("Telegram response exception", ['message' => $e->getMessage(), 'chatId' => $chatId]);
-            // Дополнительная логика обработки исключений...
+            Log::error("Ответ от телеграм", ['message' => $e->getMessage(), 'chatId' => $chatId]);
         }
     }
 
@@ -120,7 +118,7 @@ class CallbackQueryService
     // Выводим сообщение в зависимости от правильности ответа и наличия объяснения.
     protected function generateResponseMessage(bool $isCorrect, int $currentQuestionId): string
     {
-        $messageText = $isCorrect ? "✅ Верно!" . PHP_EOL . PHP_EOL : "❌ Неверно.\n";
+        $messageText = $isCorrect ? "✅ Верно!\n\n" : "❌ Неверно.\n";
         if (!$isCorrect) {
             $correctAnswer = Question::find($currentQuestionId)
                 ->answers()
@@ -128,7 +126,7 @@ class CallbackQueryService
                 ->first();
 
             if ($correctAnswer) {
-                $messageText .= PHP_EOL . "<strong>Правильный ответ: " . $correctAnswer->text . "</strong>\n\n";
+                $messageText .= "\n<strong>Правильный ответ: {$correctAnswer->text}</strong>\n\n";
             } else {
                 $messageText .= "Не удалось найти правильный ответ.\n\n";
             }
@@ -165,7 +163,7 @@ class CallbackQueryService
         $currentQuestion = Question::find($currentQuestionId);
 
         if (!empty($currentQuestion->explanation)) {
-            return '<em>' . '🔸' . htmlspecialchars($currentQuestion->explanation) . '</em>';
+            return "<em>🔸" . htmlspecialchars($currentQuestion->explanation) . "</em>";
         }
         return null;
     }
