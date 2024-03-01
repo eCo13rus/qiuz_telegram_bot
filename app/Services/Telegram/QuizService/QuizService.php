@@ -10,6 +10,7 @@ use App\Models\Question;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use App\Models\GeneralPicture;
+use App\Models\Picture;
 use App\Traits\ResultMessageTrait;
 
 class QuizService
@@ -97,7 +98,7 @@ class QuizService
     }
 
     // Если в базе нет сохраненных фото получаем локально по пути где они лежат и сохраняем их telegram_file_id 
-    protected function fetchAndSaveTelegramFileId($picture, $chatId)
+    protected function fetchAndSaveTelegramFileId(Picture $picture, int $chatId)
     {
         $imagePath = storage_path('app/public/' . $picture->path);
 
@@ -173,7 +174,7 @@ class QuizService
     }
 
     // Определяет звание пользователя и выдает соответствующее изображение
-    public function fetchResultImage(int $score, $chatId)
+    public function fetchResultImage(int $score, int $chatId)
     {
         if ($score <= 2) {
             $imagePath = 'questions/photo6.jpeg'; // Для звания "Ученик"

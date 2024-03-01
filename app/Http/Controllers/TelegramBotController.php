@@ -63,8 +63,6 @@ class TelegramBotController extends Controller
         if ($callbackQuery) {
             $this->serviceCheckSubscription->handleSubscriptionCallback($callbackQuery);
         }
-
-        return response()->json(['status' => 'success']);
     }
 
     // Обработка callback-запросов
