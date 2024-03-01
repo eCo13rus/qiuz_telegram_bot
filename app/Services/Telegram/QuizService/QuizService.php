@@ -98,7 +98,7 @@ class QuizService
     }
 
     // Если в базе нет сохраненных фото получаем локально по пути где они лежат и сохраняем их telegram_file_id 
-    protected function fetchAndSaveTelegramFileId(Picture $picture, int $chatId)
+    protected function fetchAndSaveTelegramFileId($picture, int $chatId)
     {
         $imagePath = storage_path('app/public/' . $picture->path);
 

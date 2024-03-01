@@ -111,17 +111,17 @@ class QuizTableSeeder extends Seeder
             ],
         ];
 
-        // $generalPicturesData = [
-        //     ['path' => 'questions/photo4.jpeg'],
-        //     ['path' => 'questions/photo5.jpeg'],
-        //     ['path' => 'questions/photo6.jpeg'],
-        // ];
+        $generalPicturesData = [
+            ['path' => 'questions/photo4.jpeg'],
+            ['path' => 'questions/photo5.jpeg'],
+            ['path' => 'questions/photo6.jpeg'],
+        ];
 
-        // foreach ($generalPicturesData as $generalPicture) {
-        //     GeneralPicture::firstOrCreate([
-        //         'path' => $generalPicture['path']
-        //     ]);
-        // }
+        foreach ($generalPicturesData as $generalPicture) {
+            GeneralPicture::firstOrCreate([
+                'path' => $generalPicture['path']
+            ]);
+        }
 
         foreach ($data as $item) {
             // Создание вопроса с дополнительным ключом explanation
