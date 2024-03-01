@@ -58,8 +58,8 @@ class StartCommand extends Command
         $keyboard = [];
         $answers = $question->answers->toArray();
 
-        // Если текущий вопрос имеет ID 66, выстраиваем кнопки вертикально
-        if ($question->id == 66) {
+        // Если текущий вопрос имеет ID 36, выстраиваем кнопки вертикально
+        if ($question->id == 36) {
             foreach ($answers as $answer) {
                 $keyboard[] = [[
                     'text' => $answer['text'],
