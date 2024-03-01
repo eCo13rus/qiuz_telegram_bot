@@ -2,7 +2,7 @@
 
 namespace App\Services\Telegram\QuizService;
 
-use App\Telegram\Commands\QuizCommand;
+use App\Telegram\Commands\StartCommand;
 use App\Models\UserState;
 use Telegram\Bot\FileUpload\InputFile;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
@@ -32,7 +32,7 @@ class QuizService
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
         if ($nextQuestion) {
             $text = "<strong>ВОПРОС #$questionIndex\n\n{$nextQuestion->text}</strong>";
-            $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
+            $keyboard = StartCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
 

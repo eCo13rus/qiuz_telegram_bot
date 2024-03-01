@@ -38,34 +38,4 @@ class QuizCommand extends Command
             'reply_markup' => json_encode(['inline_keyboard' => $keyboard]),
         ]);
     }
-
-    // Вычисляем сколько нужно вывести кнопок с ответами
-    public static function createQuestionKeyboard($question): array
-    {
-        $keyboard = [];
-        $answers = $question->answers->toArray();
-
-        for ($i = 0; $i < count($answers); $i += 2) {
-            $row = [];
-
-            if (isset($answers[$i])) {
-                $row[] = [
-                    'text' => $answers[$i]['text'],
-                    'callback_data' => "question_{$question->id}_answer_{$answers[$i]['id']}"
-                ];
-            }
-
-            if (isset($answers[$i + 1])) {
-                $row[] = [
-                    'text' => $answers[$i + 1]['text'],
-                    'callback_data' => "question_{$question->id}_answer_{$answers[$i + 1]['id']}"
-                ];
-            }
-
-            if (!empty($row)) {
-                $keyboard[] = $row;
-            }
-        }
-        return $keyboard;
-    }
 }
