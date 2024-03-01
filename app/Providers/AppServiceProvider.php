@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Telegram::addCommands([
             \App\Telegram\Commands\StartCommand::class,
-            \App\Telegram\Commands\QuizCommand::class,
+            //\App\Telegram\Commands\QuizCommand::class,
         ]);
 
         if ($this->app->environment('local')) { // Логирование включается только в локальной среде
