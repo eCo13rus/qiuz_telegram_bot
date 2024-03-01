@@ -87,6 +87,31 @@ class SDXLService
     //     }
     // }
 
+    // public function getRequest()
+    // {
+
+    //     sleep(5);
+
+    //     $response = $this->client->post(
+    //         'https://api.gen-api.ru/api/v1/requests/1233',
+    //         [
+    //             'headers' => [
+    //                 'Content-Type' => 'application/json',
+    //                 'Authorization' => 'Bearer ' . $this->apiKey,
+    //                 'Accept' => 'application/json',
+    //             ]
+    //         ]
+    //     );
+
+    //     $response = json_decode($response->getBody()->getContents(), true);
+
+    //     match ($response['status']) {
+    //         'success' => 'выход',
+    //         'error' => 'exit',
+    //         default => $this->getRequest(),
+    //     };
+    // }
+
     // Запрос к SDXL
     public function queryDalleApi(string $prompt, int $chatId): array
     {

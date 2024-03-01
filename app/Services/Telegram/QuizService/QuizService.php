@@ -10,7 +10,6 @@ use App\Models\Question;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use App\Models\GeneralPicture;
-use App\Models\Picture;
 use App\Traits\ResultMessageTrait;
 
 class QuizService
@@ -141,7 +140,7 @@ class QuizService
 
         // Отправляем пользователю сообщение о завершении квиза
         $messageText = view('telegram.quiz_completed')->render();
-        
+
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'disable_web_page_preview' => true,
