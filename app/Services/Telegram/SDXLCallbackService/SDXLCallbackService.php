@@ -19,13 +19,13 @@ class SDXLCallbackService
     protected $serviceCheckSubscription;
     protected $sdxlService;
 
-
     public function __construct(QuizService $quizService, ServiceCheckSubscription $serviceCheckSubscription, SDXLService $sdxlService)
     {
         $this->quizService = $quizService;
         $this->serviceCheckSubscription = $serviceCheckSubscription;
         $this->sdxlService = $sdxlService;
     }
+
     // Обрабатывает колбэк от SDXL API
     public function processDalleCallback(Request $request, $chatId)
     {
@@ -96,7 +96,7 @@ class SDXLCallbackService
         $this->sendNextStepButton($chatId);
     }
 
-    // Добавляем после отправки изображения в методе handleSuccessStatus
+    // Добавляем кнопку после отправки изображения в методе handleSuccessStatus
     protected function sendNextStepButton($chatId)
     {
         $keyboard = [
@@ -112,8 +112,7 @@ class SDXLCallbackService
         ]);
     }
 
-
-    // Отправляет сгенерированное изображение в чат Telegram и удаляет сообщение об обработке
+    // Отправляет сгенерированное изображение в чат Telegram и удаляет сообщение об обработке запроса
     protected function sendImageToTelegram($imageUrl, $chatId, $processingMessageId = null): bool
     {
         Log::info("Отправляем изображение в Telegram", ['imageUrl' => $imageUrl]);

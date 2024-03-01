@@ -31,7 +31,7 @@ class QuizService
 
         $nextQuestion = Question::with(['answers', 'pictures'])->find($nextQuestionId);
         if ($nextQuestion) {
-            $text =  '<strong>' . 'ВОПРОС #' . $questionIndex . PHP_EOL . PHP_EOL . $nextQuestion->text . '</strong>';
+            $text = "<strong>ВОПРОС #$questionIndex\n\n{$nextQuestion->text}</strong>";
             $keyboard = QuizCommand::createQuestionKeyboard($nextQuestion);
 
             $this->sendQuestion($nextQuestion, $text, $keyboard, $chatId);
@@ -90,7 +90,7 @@ class QuizService
         // Отправка клавиатуры отдельным сообщением.
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'text' => '<em>' . 'Выберите вариант ответа:' . '</em>',
+            'text' => '<em>Выберите вариант ответа:</em>',
             'parse_mode' => 'HTML',
             'reply_markup' => json_encode(['inline_keyboard' => $keyboard], JSON_UNESCAPED_UNICODE),
         ]);
@@ -100,6 +100,7 @@ class QuizService
     protected function fetchAndSaveTelegramFileId($picture, $chatId)
     {
         $imagePath = storage_path('app/public/' . $picture->path);
+
         if (file_exists($imagePath)) {
             try {
                 // Отправляем фото в Telegram для получения telegram_file_id.

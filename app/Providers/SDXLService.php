@@ -87,6 +87,7 @@ class SDXLService
     //     }
     // }
 
+    // Запрос к SDXL
     public function queryDalleApi(string $prompt, int $chatId): array
     {
         $callbackUrl = $callbackUrl = env('SDXL_CALLBACK_BASE_URL') . "/dalle-callback/" . $chatId;
@@ -127,11 +128,11 @@ class SDXLService
             return ['request_id' => $body['request_id']];
         } catch (\GuzzleHttp\Exception\RequestException $e) {
             Log::error('Ошибка при запросе к gen-api.ru для генерации изображения: ' . $e->getMessage());
-            return ['error' => 'Ошибка при запросе к gen-api.ru.', 'details' => $e->getMessage()];
+            return ['error' => 'Ошибка при запросе к gen-api.ru.', 'детали' => $e->getMessage()];
         }
     }
 
-    // Обрабатывает запрос на генерацию, сохраняет айди сообщения 'text' чтобы после удалить
+    // Обрабатывает запрос на генерацию, сохраняет айди сообщения из кдюча 'text' чтобы после удалить
     public function handleRequest(string $prompt, int $chatId): array
     {
         Log::info('Обрабатываем запрос на генерацию изображения', ['prompt' => $prompt, 'chatId' => $chatId]);
