@@ -99,10 +99,10 @@ class GetStatistics extends Command
             $percentSubscribedToNeuroved = $totalUsersForSource > 0 ? round(($subscribedToNeurovedCount / $totalUsersForSource) * 100, 2) : 0;
 
             // Вывод с процентами
-        $this->line("Всего пользователей просто нажали старт: {$justStartedCount} ({$percentJustStarted}%)");
-        $this->line("Всего пользователей в процессе прохождения квиза: {$inProgressCount} ({$percentInProgress}%)");
-        $this->line("Всего пользователей завершили квиз: {$completedCount} ({$percentCompleted}%)");
-        $this->line("Всего пользователей сгенерировали изображение: {$imageGeneratedCount} ({$percentImageGenerated}%)");
+            $this->line("Всего пользователей просто нажали старт: {$justStartedCount} ({$percentJustStarted}%)");
+            $this->line("Всего пользователей в процессе прохождения квиза: {$inProgressCount} ({$percentInProgress}%)");
+            $this->line("Всего пользователей завершили квиз: {$completedCount} ({$percentCompleted}%)");
+            $this->line("Всего пользователей сгенерировали изображение: {$imageGeneratedCount} ({$percentImageGenerated}%)");
             $this->line("Всего пользователей перешли на нейротекстер: {$neurotexterCount} ({$percentNeurotexter}%)");
             $this->line("Всего пользователей подписались на нейровед: {$subscribedToNeurovedCount} ({$percentNeuroholst}%)");
             $this->line("Всего пользователей перешли на нейрохолст: {$neuroholstCount} ({$percentSubscribedToNeuroved}%)\n");
@@ -154,7 +154,7 @@ class GetStatistics extends Command
             ->where('users.is_subscribed', 1)
             ->count();
 
-        // Расчет процентов для каждой категории
+        // Вывод с процентами общий
         $percentJustStarted = $totalUsersCount > 0 ? round(($totalJustStartedCount / $totalUsersCount) * 100, 2) : 0;
         $percentInProgress = $totalUsersCount > 0 ? round(($totalInProgressCount / $totalUsersCount) * 100, 2) : 0;
         $percentCompleted = $totalUsersCount > 0 ? round(($totalCompletedCount / $totalUsersCount) * 100, 2) : 0;
