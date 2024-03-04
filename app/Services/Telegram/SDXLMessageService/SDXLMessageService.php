@@ -29,6 +29,19 @@ class SDXLMessageService
         $userId = $message->getFrom()->getId(); // Идентификатор в Telegram
         $messageText = $message->getText();
 
+        // Если текст сообщения отсутствует (например, если это стикер), уведомляем пользователя
+        if (is_null($messageText)) {
+            Log::info('Получено сообщение без текста', ['chatId' => $chatId, 'userId' => $userId]);
+
+            // Отправляем сообщение пользователю
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'Пожалуйста, отправьте текстовое сообщение. ✏️'
+            ]);
+
+            return;
+        }
+
         // Проверяем, содержит ли текст сообщения команду /start с параметрами
         if ($this->isStartCommandWithParameter($messageText)) {
             // Если содержит, то пропускаем обработку этого сообщения
@@ -37,46 +50,33 @@ class SDXLMessageService
 
         Log::info('Получено сообщение или команда', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
 
-        try {
-            // Проверяем, что $messageText не null и не является командой
-            if ($messageText !== null && !$this->isCommand($messageText)) {
-                Log::debug('Смотрим если есть пользователь в базе', ['telegram_id' => $userId]);
+        // Проверяем, что $messageText не null и не является командой
+        if ($messageText !== null && !$this->isCommand($messageText)) {
+            Log::debug('Смотрим если есть пользователь в базе', ['telegram_id' => $userId]);
 
-                $user = User::firstOrCreate(['telegram_id' => $userId]);
+            $user = User::firstOrCreate(['telegram_id' => $userId]);
 
-                Log::info($user->wasRecentlyCreated ? 'Новый пользователь' : 'Существующий пользователь', ['userId' => $userId]);
+            Log::info($user->wasRecentlyCreated ? 'Новый пользователь' : 'Существующий пользователь', ['userId' => $userId]);
 
-                $userState = $user->state()->first();
+            $userState = $user->state()->first();
 
-                if ($userState && $userState->state === 'image_generated') {
-                    TelegramFacade::sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => 'Вы уже делали запрос на генерацию изображения 🙄.',
-                        'parse_mode' => 'HTML',
-                    ]);
-                } elseif (is_null($userState) || $userState->state !== 'quiz_completed') {
-                    Log::warning('Не закончил квиз', ['userId' => $userId]);
-                    TelegramFacade::sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => 'Сначало завершите викторину перед тем, как сделать запрос. 🤓'
-                    ]);
-                } else {
-                    Log::info('Завершил квиз и делает запрос на генерацию изображения', ['userId' => $userId]);
+            if ($userState && $userState->state === 'image_generated') {
+                TelegramFacade::sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => 'Вы уже делали запрос на генерацию изображения 🙄.',
+                    'parse_mode' => 'HTML',
+                ]);
+            } elseif (is_null($userState) || $userState->state !== 'quiz_completed') {
+                Log::warning('Не закончил квиз', ['userId' => $userId]);
+                TelegramFacade::sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => 'Сначало завершите викторину перед тем, как сделать запрос. 🤓'
+                ]);
+            } else {
+                Log::info('Завершил квиз и делает запрос на генерацию изображения', ['userId' => $userId]);
 
-                    // Генерация и отправка изображения
-                    $this->requestSDXL($chatId, $messageText);
-                }
-            }
-        } catch (\Telegram\Bot\Exceptions\TelegramResponseException $e) {
-            if (strpos($e->getMessage(), 'bot was blocked by the user') !== false) {
-                Log::warning('Пользователь заблокировал бота', ['userId' => $userId]);
-
-                // Обновление статуса пользователя в базе данных как "неактивный"
-                $user = User::where('telegram_id', $userId)->first();
-                if ($user) {
-                    $user->update(['status' => 'неактивный']);
-                    Log::info('Статус пользователя обновлен на неактивный', ['userId' => $userId]);
-                }
+                // Генерация и отправка изображения
+                $this->requestSDXL($chatId, $messageText);
             }
         }
     }
