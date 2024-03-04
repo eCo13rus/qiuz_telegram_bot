@@ -40,10 +40,14 @@ class StartCommand extends Command
 
         $this->replyWithChatAction(['action' => Actions::TYPING]);
 
-        $chat_id = $this->getUpdate()->getMessage()->getChat()->getId();
-        $currentQuestionId = Cache::get('chat_' . $chat_id . '_current_question_id', function () {
-            return Question::first()->id;
-        });
+        $currentQuestion = Question::first();
+
+        Log::info('Получаем первый вопрос', ['Вопрос' => $currentQuestion]);
+        $currentQuestionId = null;
+
+        if ($currentQuestion) {
+            $currentQuestionId = $currentQuestion->id;
+        }
         $question = Question::with('answers')->find($currentQuestionId);
         $keyboard = $this->createQuestionKeyboard($question);
 

@@ -35,7 +35,7 @@ class SDXLMessageService
             return;
         }
 
-        Log::info('Получено сообщение', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
+        Log::info('Получено сообщение или команда', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
 
         try {
             // Проверяем, что $messageText не null и не является командой
@@ -44,7 +44,7 @@ class SDXLMessageService
 
                 $user = User::firstOrCreate(['telegram_id' => $userId]);
 
-                Log::info($user->wasRecentlyCreated ? 'Новый пользователь' : 'Existing user', ['userId' => $userId]);
+                Log::info($user->wasRecentlyCreated ? 'Новый пользователь' : 'Существующий пользователь', ['userId' => $userId]);
 
                 $userState = $user->state()->first();
 
