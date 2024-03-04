@@ -30,7 +30,7 @@ class SDXLMessageService
         $messageText = $message->getText();
 
         // Если текст сообщения отсутствует (например, если это стикер), уведомляем пользователя
-        if (is_null($messageText)) {
+        if (empty($messageText) || $this->containsOnlyEmojis($messageText)) {
             Log::info('Получено сообщение без текста', ['chatId' => $chatId, 'userId' => $userId]);
 
             // Отправляем сообщение пользователю
@@ -79,6 +79,18 @@ class SDXLMessageService
                 $this->requestSDXL($chatId, $messageText);
             }
         }
+    }
+
+    // Проверяет, содержит ли строка только смайлики и другие непечатные символы
+    public function containsOnlyEmojis($text) {
+        // Проверяем, что текст не null и не пустая строка
+        if ($text === null || trim($text) === '') {
+            return false;
+        }
+    
+        $emojiPattern = '/^[\p{So}\p{C}]+$/u';
+    
+        return preg_match($emojiPattern, $text) > 0;
     }
 
     // Проверяет есть ли после старт параметры
