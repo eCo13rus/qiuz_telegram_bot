@@ -29,7 +29,13 @@ class SDXLMessageService
         $userId = $message->getFrom()->getId(); // Идентификатор в Telegram
         $messageText = $message->getText();
 
-        Log::info('Received message', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
+        // Проверяем, содержит ли текст сообщения команду /start с параметрами
+        if ($this->isStartCommandWithParameter($messageText)) {
+            // Если содержит, то пропускаем обработку этого сообщения
+            return;
+        }
+
+        Log::info('Получено сообщение', ['chatId' => $chatId, 'userId' => $userId, 'messageText' => $messageText]);
 
         try {
             // Проверяем, что $messageText не null и не является командой
@@ -71,19 +77,30 @@ class SDXLMessageService
                     $user->update(['status' => 'неактивный']);
                     Log::info('Статус пользователя обновлен на неактивный', ['userId' => $userId]);
                 }
-            } else {
-                throw $e; // Переброс других исключений для обработки в другом месте
             }
         }
+    }
+
+    // Проверяет есть ли после старт параметры
+    protected function isStartCommandWithParameter(string $messageText): bool
+    {
+        $parts = explode(' ', $messageText);
+        return $parts[0] === '/start' && count($parts) > 1;
     }
 
     //Проверка на ввод команд или сообщения
     protected function isCommand(string $messageText): bool
     {
+        // Разделяем текст сообщения по пробелам
+        $parts = explode(' ', $messageText);
+
+        // Берём первую часть сообщения, которая должна быть командой
+        $commandText = $parts[0];
+
         $commandsClasses = config('telegram.bots.mybot.commands', []);
         foreach ($commandsClasses as $commandClass) {
             $commandInstance = new $commandClass; // Создание экземпляра класса команды
-            if ($messageText === '/' . $commandInstance->getName()) { // Проверка на соответствие имени команды
+            if ($commandText === '/' . $commandInstance->getName()) { // Проверка на соответствие имени команды
                 return true;
             }
         }

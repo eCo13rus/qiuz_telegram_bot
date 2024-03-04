@@ -26,6 +26,8 @@ class StartCommand extends Command
 
         // Получаем айди пользователя из объекта сообщения
         $telegramUserId = $this->update->getMessage()->getFrom()->getId();
+        $arguments = explode(' ', $this->update->getMessage()->getText());
+        $utmSource = count($arguments) > 1 ? $arguments[1] : null;
 
         // Проверяем, существует ли пользователь в таблице `users`, если не то создаем
         $user = User::firstOrCreate(['telegram_id' => $telegramUserId]);
@@ -33,7 +35,7 @@ class StartCommand extends Command
         // Теперь, когда у нас есть пользователь, мы можем безопасно обновить/добавить состояние в `user_states`
         UserState::updateOrCreate(
             ['user_id' => $user->id],
-            ['state' => 'start']
+            ['state' => 'start', 'utm_source' => $utmSource],
         );
 
         $this->replyWithChatAction(['action' => Actions::TYPING]);
@@ -59,7 +61,7 @@ class StartCommand extends Command
         $answers = $question->answers->toArray();
 
         // Если текущий вопрос имеет ID 36, выстраиваем кнопки вертикально
-        if ($question->id == 36) {
+        if ($question->id == 66) {
             foreach ($answers as $answer) {
                 $keyboard[] = [[
                     'text' => $answer['text'],
