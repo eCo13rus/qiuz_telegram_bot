@@ -92,6 +92,14 @@ class SDXLCallbackService
         // Отправляем изображение
         $this->sendImageToTelegram($imageUrl, $chatId, $processingMessageId);
 
+        $user = User::where('telegram_id', $chatId)->first();
+
+        // После отправки результатов квиза и изображения обновляем столбец image_generated
+        $user->state()->update(['state' => 'image_generated']);
+
+        // Устанавливаем флаг `image_generated` для всех ответов пользователя на квиз
+        $user->quizResponses()->update(['image_generated' => true]);
+
         // Выводим кнопку "Вау круто а что дальше?"
         $this->sendNextStepButton($chatId);
     }
@@ -174,12 +182,6 @@ class SDXLCallbackService
                     'caption' => $resultMessages['title'], 
                     'parse_mode' => 'HTML',
                 ]);
-
-                // После отправки результатов квиза и изображения обновляем столбец image_generated
-                $user->state()->update(['state' => 'image_generated']);
-
-                // Устанавливаем флаг `image_generated` для всех ответов пользователя на квиз
-                $user->quizResponses()->update(['image_generated' => true]);
             }
 
             // Отправляем правильные ответы и дополнительную информацию.
