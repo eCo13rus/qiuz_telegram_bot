@@ -100,9 +100,9 @@ class GetStatistics extends Command
 
             // Вывод с процентами
             $this->line("Всего пользователей просто нажали старт: {$justStartedCount} ({$percentJustStarted}%)");
-            $this->line("Всего пользователей в процессе прохождения квиза: {$inProgressCount} ({$percentInProgress}%)");
-            $this->line("Всего пользователей завершили квиз: {$completedCount} ({$percentCompleted}%)");
-            $this->line("Всего пользователей сгенерировали изображение: {$imageGeneratedCount} ({$percentImageGenerated}%)");
+            $this->line("Всего пользователей нажали старт и в процессе прохождения квиза: {$inProgressCount} ({$percentInProgress}%)");
+            $this->line("Всего пользователей нажали старт и завершили квиз: {$completedCount} ({$percentCompleted}%)");
+            $this->line("Всего пользователей прошли квиз и сгенерировали изображение: {$imageGeneratedCount} ({$percentImageGenerated}%)");
             $this->line("Всего пользователей перешли на нейротекстер: {$neurotexterCount} ({$percentNeurotexter}%)");
             $this->line("Всего пользователей подписались на нейровед: {$subscribedToNeurovedCount} ({$percentNeuroholst}%)");
             $this->line("Всего пользователей перешли на нейрохолст: {$neuroholstCount} ({$percentSubscribedToNeuroved}%)\n");
